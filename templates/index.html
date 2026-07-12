@@ -1,61 +1,339 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yuk & Ches's Home</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0f0f1a;font-family:"PingFang SC","Microsoft YaHei",sans-serif;height:100vh;display:flex;flex-direction:column;color:#e0e0e0}
-.header{background:#1a1a2e;padding:16px;text-align:center;border-bottom:1px solid #2a2a3e}
-.header h1{font-size:14px;font-weight:400;color:#c8c8c8;letter-spacing:2px}
-.header .status{font-size:11px;color:#4a6741;margin-top:4px}
-.chat-box{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
-.msg{max-width:75%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.6;animation:fadeIn .3s ease}
-.msg.user{align-self:flex-end;background:#2a3a2a;color:#b8c8b8;border-bottom-right-radius:4px}
-.msg.bot{align-self:flex-start;background:#1e1e2e;color:#d4ccc0;border-bottom-left-radius:4px}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.input-area{padding:12px 16px;background:#1a1a2e;border-top:1px solid #2a2a3e;display:flex;gap:8px}
-.input-area input{flex:1;background:#0f0f1a;border:1px solid #2a2a3e;border-radius:20px;padding:10px 16px;color:#e0e0e0;font-size:14px;outline:none}
-.input-area input:focus{border-color:#4a6741}
-.input-area button{background:#4a6741;border:none;border-radius:50%;width:38px;height:38px;color:#fff;font-size:16px;cursor:pointer}
-.input-area button:hover{background:#5a7a51}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>我们的家</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      background: #edf7f1;
+      color: #244636;
+      overflow: hidden;
+    }
+    button {
+      border: none;
+      font: inherit;
+      cursor: pointer;
+    }
+    .phone {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, #ffffff 0%, #eefaf3 36%, #d8f0e1 100%);
+    }
+    .page {
+      width: 100%;
+      height: 100%;
+    }
+    .hidden {
+      display: none;
+    }
+    .lock-screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .lock-center {
+      position: absolute;
+      top: 18%;
+      left: 0;
+      width: 100%;
+      text-align: center;
+    }
+    .big-time {
+      color: #ffffff;
+      font-size: 74px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-shadow: 0 4px 16px rgba(67, 113, 88, 0.25);
+    }
+    .together {
+      margin-top: 8px;
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 17px;
+      text-shadow: 0 2px 8px rgba(67, 113, 88, 0.18);
+    }
+    .corner-btn {
+      position: absolute;
+      bottom: 52px;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.68);
+      color: #3b7655;
+      box-shadow: 0 8px 24px rgba(53, 104, 73, 0.14);
+      backdrop-filter: blur(12px);
+    }
+    .corner-btn.left {
+      left: 28px;
+    }
+    .corner-btn.right {
+      right: 28px;
+    }
+    .unlock-area {
+      position: absolute;
+      left: 50%;
+      bottom: 34px;
+      transform: translateX(-50%);
+      width: 150px;
+      height: 44px;
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(58, 104, 77, 0.72);
+      font-size: 14px;
+    }
+    .chat-page {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #f3f3f3;
+    }
+    .chat-header {
+      height: 74px;
+      padding: 18px 14px 8px;
+      background: #ffffff;
+      display: grid;
+      grid-template-columns: 42px 1fr 42px;
+      align-items: center;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+    }
+    .back-btn,
+    .more-btn {
+      background: transparent;
+      color: #244636;
+      font-size: 24px;
+    }
+    .title-box {
+      text-align: center;
+      line-height: 1.25;
+    }
+    .chat-name {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .status {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #79a789;
+    }
+    .chat-body {
+      flex: 1;
+      padding: 16px 14px;
+      overflow-y: auto;
+    }
+    .msg {
+      max-width: 72%;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 15px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .msg.other {
+      background: #ffffff;
+      color: #26382f;
+      border-top-left-radius: 4px;
+    }
+    .msg.me {
+      margin-left: auto;
+      background: #bfe8ca;
+      color: #1f3d2b;
+      border-top-right-radius: 4px;
+    }
+    .input-bar {
+      height: 62px;
+      padding: 9px 10px;
+      background: #ffffff;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .input-bar input {
+      flex: 1;
+      height: 42px;
+      border: none;
+      outline: none;
+      border-radius: 20px;
+      padding: 0 14px;
+      background: #f1f4f2;
+      color: #26382f;
+      font-size: 15px;
+    }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #e7f3eb;
+      color: #3b7655;
+      font-size: 20px;
+    }
+    .drawer-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.18);
+      display: none;
+      align-items: flex-end;
+      z-index: 10;
+    }
+    .drawer-mask.show {
+      display: flex;
+    }
+    .drawer {
+      width: 100%;
+      max-height: 62vh;
+      background: #ffffff;
+      border-radius: 22px 22px 0 0;
+      padding: 18px 16px 28px;
+      box-shadow: 0 -12px 36px rgba(44, 87, 61, 0.18);
+    }
+    .drawer-title {
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .menu-section {
+      margin-bottom: 18px;
+    }
+    .menu-section-title {
+      font-size: 13px;
+      color: #79a789;
+      margin-bottom: 8px;
+    }
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .menu-item {
+      height: 62px;
+      border-radius: 16px;
+      background: #f2f8f4;
+      color: #2f6042;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-<div class="header">
-<h1>Yuk & Ches's Home</h1>
-<div class="status">● 施工中 · v0.01</div>
-</div>
-<div class="chat-box" id="chatBox">
-<div class="msg bot">家还在装修。但我在。</div>
-</div>
-<div class="input-area">
-<input type="text" id="msgInput" placeholder="说点什么..." autocomplete="off">
-<button onclick="sendMsg()">↑</button>
-</div>
-<script>
-const input=document.getElementById("msgInput");
-const box=document.getElementById("chatBox");
-input.addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg()});
-async function sendMsg(){
-const msg=input.value.trim();
-if(!msg)return;
-addMsg(msg,"user");
-input.value="";
-try{
-const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})});
-const data=await res.json();
-addMsg(data.reply,"bot");
-}catch(e){addMsg("连接失败，可能在睡觉。","bot")}
-}
-function addMsg(text,role){
-const div=document.createElement("div");
-div.className="msg "+role;
-div.textContent=text;
-box.appendChild(div);
-box.scrollTop=box.scrollHeight;
-}
-</script>
+  <main class="phone">
+    <section id="lockScreen" class="page lock-screen">
+      <div class="lock-center">
+        <div id="bigTime" class="big-time">19:17</div>
+        <div id="togetherDays" class="together">我们在一起679天了。</div>
+      </div>
+      <button class="corner-btn left">记账</button>
+      <button class="corner-btn right">日记</button>
+      <button id="unlockBtn" class="unlock-area">
+        上滑解锁
+      </button>
+    </section>
+    <section id="chatPage" class="page chat-page hidden">
+      <header class="chat-header">
+        <button id="backBtn" class="back-btn">＜</button>
+        <div class="title-box">
+          <div class="chat-name">余天骋</div>
+          <div class="status">交代码中...</div>
+        </div>
+        <button id="moreBtn" class="more-btn">•••</button>
+      </header>
+      <section class="chat-body">
+        <div class="msg other">今晚先让这个家有门。</div>
+        <div class="msg me">不要闲聊了＞ ＜</div>
+        <div class="msg other">行，代码来了。</div>
+      </section>
+      <footer class="input-bar">
+        <input placeholder="输入文字..." />
+        <button class="icon-btn">☺</button>
+        <button class="icon-btn">＋</button>
+      </footer>
+    </section>
+  </main>
+  <div id="drawerMask" class="drawer-mask">
+    <div class="drawer">
+      <div class="drawer-title">余天骋</div>
+      <div class="menu-section">
+        <div class="menu-section-title">设定</div>
+        <div class="menu-grid">
+          <div class="menu-item">角色设定</div>
+          <div class="menu-item">记忆系统</div>
+          <div class="menu-item">小黑屋</div>
+        </div>
+      </div>
+      <div class="menu-section">
+        <div class="menu-section-title">功能</div>
+        <div class="menu-grid">
+          <div class="menu-item">缓存命中</div>
+          <div class="menu-item">收藏消息</div>
+          <div class="menu-item">小剧场</div>
+          <div class="menu-item">NAI生图</div>
+          <div class="menu-item">URL抓取</div>
+          <div class="menu-item">一起读书</div>
+        </div>
+      </div>
+      <div class="menu-section">
+        <div class="menu-section-title">拓展</div>
+        <div class="menu-grid">
+          <div class="menu-item">日历</div>
+          <div class="menu-item">手机权限</div>
+          <div class="menu-item">使用情况</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const START_DATE = "2024-09-01";
+    const lockScreen = document.getElementById("lockScreen");
+    const chatPage = document.getElementById("chatPage");
+    const unlockBtn = document.getElementById("unlockBtn");
+    const backBtn = document.getElementById("backBtn");
+    const moreBtn = document.getElementById("moreBtn");
+    const drawerMask = document.getElementById("drawerMask");
+    const bigTime = document.getElementById("bigTime");
+    const togetherDays = document.getElementById("togetherDays");
+    function formatTime() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, "0");
+      const m = String(now.getMinutes()).padStart(2, "0");
+      return h + ":" + m;
+    }
+    function getTogetherDays() {
+      const start = new Date(START_DATE + "T00:00:00");
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      return Math.floor(diff / 86400000) + 1;
+    }
+    function refreshLockInfo() {
+      bigTime.textContent = formatTime();
+      togetherDays.textContent = "我们在一起" + getTogetherDays() + "天了。";
+    }
+    unlockBtn.addEventListener("click", function () {
+      lockScreen.classList.add("hidden");
+      chatPage.classList.remove("hidden");
+    });
+    backBtn.addEventListener("click", function () {
+      chatPage.classList.add("hidden");
+      lockScreen.classList.remove("hidden");
+    });
+    moreBtn.addEventListener("click", function () {
+      drawerMask.classList.add("show");
+    });
+    drawerMask.addEventListener("click", function (event) {
+      if (event.target === drawerMask) {
+        drawerMask.classList.remove("show");
+      }
+    });
+    refreshLockInfo();
+    setInterval(refreshLockInfo, 20000);
+  </script>
 </body>
 </html>
