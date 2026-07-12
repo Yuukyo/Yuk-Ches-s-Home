@@ -1,31 +1,50 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang=zh-CN>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset=UTF-8>
+  <meta name=viewport content=width=device-width,initial-scale=1.0,viewport-fit=cover>
   <title>我们的家</title>
   <style>
     * {
       box-sizing: border-box;
     }
+    html,
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
-      background: #edf7f1;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif;
+      background: #dfeee6;
       color: #244636;
       overflow: hidden;
     }
     button {
       border: none;
+      outline: none;
       font: inherit;
       cursor: pointer;
       background: transparent;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input {
+      font: inherit;
+    }
+    .app-shell {
+      width: 100vw;
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at top, #ffffff 0%, #eefaf3 34%, #d8f0e1 100%);
     }
     .phone {
-      width: 100vw;
-      height: 100vh;
+      width: min(100vw, 430px);
+      height: min(100dvh, 920px);
+      position: relative;
       overflow: hidden;
-      background: radial-gradient(circle at top, #ffffff 0%, #eefaf3 36%, #d8f0e1 100%);
+      background: #f3f3f3;
+      box-shadow: 0 24px 80px rgba(42, 88, 59, 0.25);
     }
     .page {
       width: 100%;
@@ -36,6 +55,8 @@
     }
     .lock-screen {
       position: relative;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.96) 0%, rgba(239,250,243,0.96) 35%, rgba(210,239,223,0.98) 100%);
     }
     .lock-center {
       position: absolute;
@@ -43,29 +64,30 @@
       left: 0;
       width: 100%;
       text-align: center;
+      user-select: none;
     }
     .big-time {
       color: #ffffff;
-      font-size: 74px;
+      font-size: clamp(58px, 18vw, 78px);
       font-weight: 700;
       letter-spacing: 2px;
-      text-shadow: 0 4px 16px rgba(67, 113, 88, 0.25);
+      text-shadow: 0 4px 18px rgba(67, 113, 88, 0.24);
     }
     .together {
       margin-top: 8px;
-      color: rgba(255, 255, 255, 0.92);
+      color: rgba(255,255,255,0.92);
       font-size: 17px;
-      text-shadow: 0 2px 8px rgba(67, 113, 88, 0.18);
+      text-shadow: 0 2px 8px rgba(67, 113, 88, 0.2);
     }
     .corner-btn {
       position: absolute;
-      bottom: 52px;
+      bottom: calc(52px + env(safe-area-inset-bottom));
       width: 58px;
       height: 58px;
       border-radius: 18px;
-      background: rgba(255, 255, 255, 0.68);
+      background: rgba(255,255,255,0.7);
       color: #3b7655;
-      box-shadow: 0 8px 24px rgba(53, 104, 73, 0.14);
+      box-shadow: 0 8px 24px rgba(53,104,73,0.14);
       backdrop-filter: blur(12px);
     }
     .corner-btn.left {
@@ -77,10 +99,11 @@
     .unlock-tip {
       position: absolute;
       left: 50%;
-      bottom: 34px;
+      bottom: calc(34px + env(safe-area-inset-bottom));
       transform: translateX(-50%);
-      color: rgba(58, 104, 77, 0.72);
+      color: rgba(58,104,77,0.72);
       font-size: 14px;
+      user-select: none;
     }
     .chat-page {
       display: flex;
@@ -89,50 +112,61 @@
     }
     .chat-header {
       height: 74px;
-      padding: 18px 14px 8px;
+      padding: 18px 12px 8px;
       background: #ffffff;
       display: grid;
       grid-template-columns: 42px 1fr 42px;
       align-items: center;
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+      flex-shrink: 0;
     }
     .back-btn {
       color: #244636;
-      font-size: 28px;
+      font-size: 32px;
+      line-height: 1;
     }
     .title-box {
       text-align: center;
       line-height: 1.25;
+      min-width: 0;
     }
     .chat-name {
       font-size: 16px;
       font-weight: 600;
+      color: #244636;
     }
     .status {
       margin-top: 2px;
       font-size: 12px;
       color: #79a789;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .more-btn {
       color: #244636;
       font-size: 30px;
       line-height: 1;
+      transform: translateY(-4px);
     }
     .chat-body {
       flex: 1;
+      min-height: 0;
       padding: 16px 14px;
       overflow-y: auto;
+      background: #f3f3f3;
     }
     .msg {
-  width: fit-content;
-  max-width: 72%;
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  font-size: 15px;
-  line-height: 1.45;
-  word-break: break-word;
-}
+      width: fit-content;
+      max-width: 72%;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 15px;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
     .msg.other {
       background: #ffffff;
       color: #26382f;
@@ -145,31 +179,62 @@
       border-top-right-radius: 4px;
     }
     .input-bar {
-      height: 62px;
-      padding: 9px 10px;
+      min-height: 66px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
       background: #ffffff;
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
+      flex-shrink: 0;
     }
-    .input-bar input {
+    .plus-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      color: #111;
+      font-size: 34px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .input-wrap {
       flex: 1;
-      height: 42px;
+      min-width: 0;
+      height: 46px;
+      border-radius: 24px;
+      background: #eeeeee;
+      display: flex;
+      align-items: center;
+      padding: 0 8px 0 16px;
+    }
+    .input-wrap input {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
       border: none;
       outline: none;
-      border-radius: 20px;
-      padding: 0 14px;
-      background: #f1f4f2;
+      background: transparent;
       color: #26382f;
       font-size: 15px;
     }
-    .icon-btn {
-      width: 38px;
-      height: 38px;
+    .face-btn {
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      background: #e7f3eb;
-      color: #3b7655;
-      font-size: 20px;
+      color: #111;
+      font-size: 28px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .send-btn {
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 22px;
+      background: #20c76a;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      flex-shrink: 0;
     }
     .info-page {
       display: flex;
@@ -182,7 +247,8 @@
       display: grid;
       grid-template-columns: 48px 1fr 48px;
       align-items: center;
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+      flex-shrink: 0;
     }
     .info-title {
       text-align: center;
@@ -193,6 +259,8 @@
     .info-content {
       flex: 1;
       overflow-y: auto;
+      min-height: 0;
+      padding-bottom: env(safe-area-inset-bottom);
     }
     .member-box {
       background: #ffffff;
@@ -217,7 +285,7 @@
       justify-content: center;
       color: #3b7655;
       font-size: 26px;
-      margin-bottom: 6px;
+      margin: 0 auto 6px;
     }
     .add-avatar {
       border: 1px dashed #aaa;
@@ -229,11 +297,12 @@
       background: #ffffff;
     }
     .info-row {
-      height: 52px;
+      min-height: 52px;
       padding: 0 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       font-size: 16px;
       color: #222;
       border-bottom: 1px solid #eeeeee;
@@ -241,203 +310,255 @@
     .info-row:last-child {
       border-bottom: none;
     }
+    .row-sub {
+      color: #999;
+      font-size: 13px;
+      margin-top: 3px;
+    }
+    .row-main {
+      padding: 10px 0;
+    }
     .arrow {
       color: #bbb;
       font-size: 26px;
+      flex-shrink: 0;
     }
-    .switch {
-      width: 50px;
-      height: 30px;
-      border-radius: 999px;
-      background: #e5e5e5;
-      position: relative;
+    @media (max-width: 520px) {
+      .app-shell {
+        display: block;
+      }
+      .phone {
+        width: 100vw;
+        height: 100dvh;
+        box-shadow: none;
+      }
     }
-    .switch::after {
-      content: "";
-      position: absolute;
-      width: 26px;
-      height: 26px;
-      top: 2px;
-      left: 2px;
-      border-radius: 50%;
-      background: #ffffff;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    @media (min-width: 521px) {
+      .phone {
+        border-radius: 28px;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="phone">
-    <section id="lockScreen" class="page lock-screen">
-      <div class="lock-center">
-        <div id="bigTime" class="big-time">19:30</div>
-        <div id="togetherDays" class="together">我们在一起679天了。</div>
-      </div>
-      <button class="corner-btn left">记账</button>
-      <button class="corner-btn right">日记</button>
-      <div class="unlock-tip">上滑解锁</div>
-    </section>
-    <section id="chatPage" class="page chat-page hidden">
-      <header class="chat-header">
-        <button id="backBtn" class="back-btn">‹</button>
-        <div class="title-box">
-          <div class="chat-name">余天骋</div>
-          <div class="status">交代码中...</div>
+  <div class=app-shell>
+    <main class=phone>
+      <section id=lockScreen class=page lock-screen>
+        <div class=lock-center>
+          <div id=bigTime class=big-time>20:01</div>
+          <div id=togetherDays class=together>我们在一起679天了。</div>
         </div>
-        <button id="moreBtn" class="more-btn">⋯</button>
-      </header>
-      <section class="chat-body">
-        <div class="msg other">今晚先让这个家有门。</div>
-        <div class="msg me">不要闲聊了＞ ＜</div>
-        <div class="msg other">行，代码来了。</div>
+        <button class='corner-btn left'>记账</button>
+        <button class='corner-btn right'>日记</button>
+        <div class=unlock-tip>上滑解锁</div>
       </section>
-      <footer class="input-bar">
-        <button class="plus-btn">＋</button>
-        <div class="input-wrap">
-        <input placeholder="输入文字...">
-        <button class="face-btn">☺</button>
+      <section id=chatPage class='page chat-page hidden'>
+        <header class=chat-header>
+          <button id=backBtn class=back-btn>‹</button>
+          <div class=title-box>
+            <div class=chat-name>余天骋</div>
+            <div class=status>改自适应中...</div>
+          </div>
+          <button id=moreBtn class=more-btn>⋯</button>
+        </header>
+        <section class=chat-body id=chatBody>
+          <div class='msg other'>今晚先让这个家有门。</div>
+          <div class='msg me'>不要闲聊了＞ ＜</div>
+          <div class='msg other'>行，代码来了。</div>
+        </section>
+        <footer class=input-bar>
+          <button class=plus-btn>＋</button>
+          <div class=input-wrap>
+            <input id=messageInput placeholder=输入文字...>
+            <button class=face-btn>☺</button>
+          </div>
+          <button id=sendBtn class=send-btn>发送</button>
+        </footer>
+      </section>
+      <section id=infoPage class='page info-page hidden'>
+        <header class=info-header>
+          <button id=infoBackBtn class=back-btn>‹</button>
+          <div class=info-title>聊天信息</div>
+          <div></div>
+        </header>
+        <section class=info-content>
+          <div class=member-box>
+            <div class=avatar-item>
+              <div class=avatar>余</div>
+              <div>余天骋</div>
+            </div>
+            <div class=avatar-item>
+              <div class='avatar add-avatar'>＋</div>
+            </div>
+          </div>
+          <div class=info-group>
+            <div class=info-row>
+              <div>查找聊天记录</div>
+              <div class=arrow>›</div>
+            </div>
+          </div>
+          <div class=info-group>
+            <div class=info-row>
+              <div class=row-main>
+                <div>某人设定</div>
+                <div class=row-sub>角色卡、状态、说话习惯</div>
+              </div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div class=row-main>
+                <div>世界书</div>
+                <div class=row-sub>规则、关系、世界结构</div>
+              </div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div class=row-main>
+                <div>过往记忆</div>
+                <div class=row-sub>搬家前聊天、小剧场、旧记录</div>
+              </div>
+              <div class=arrow>›</div>
+            </div>
+          </div>
+          <div class=info-group>
+            <div class=info-row>
+              <div>记忆系统</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>缓存命中</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>收藏消息</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>NAI生图</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>小剧场</div>
+              <div class=arrow>›</div>
+            </div>
+          </div>
+          <div class=info-group>
+            <div class=info-row>
+              <div>一起听歌</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>一起看书</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>日历</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>手机权限</div>
+              <div class=arrow>›</div>
+            </div>
+            <div class=info-row>
+              <div>使用情况</div>
+              <div class=arrow>›</div>
+            </div>
+          </div>
+          <div class=info-group>
+            <div class=info-row>
+              <div>投诉</div>
+              <div class=arrow>›</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
   </div>
-  <button class="send-btn">发送</button>
-      </footer>
-    </section>
-    <section id="infoPage" class="page info-page hidden">
-      <header class="info-header">
-        <button id="infoBackBtn" class="back-btn">‹</button>
-        <div class="info-title">聊天信息</div>
-        <div></div>
-      </header>
-      <section class="info-content">
-        <div class="member-box">
-          <div class="avatar-item">
-            <div class="avatar">余</div>
-            <div>余天骋</div>
-          </div>
-          <div class="avatar-item">
-            <div class="avatar add-avatar">＋</div>
-          </div>
-        </div>
-        <div class="info-group">
-          <div class="info-row">
-            <span>查找聊天记录</span>
-            <span class="arrow">›</span>
-          </div>
-        </div>
-        <div class="info-group">
-          <div class="info-row">
-            <span>消息免打扰</span>
-            <span class="switch"></span>
-          </div>
-          <div class="info-row">
-            <span>置顶聊天</span>
-            <span class="switch"></span>
-          </div>
-          <div class="info-row">
-            <span>提醒</span>
-            <span class="switch"></span>
-          </div>
-        </div>
-        <div class="info-group">
-          <div class="info-row">
-            <span>设定</span>
-            <span class="arrow">›</span>
-          </div>
-          <div class="info-row">
-            <span>记忆系统</span>
-            <span class="arrow">›</span>
-          </div>
-          <div class="info-row">
-            <span>小黑屋</span>
-            <span class="arrow">›</span>
-          </div>
-        </div>
-        <div class="info-group">
-          <div class="info-row">
-            <span>功能</span>
-            <span class="arrow">›</span>
-          </div>
-          <div class="info-row">
-            <span>拓展</span>
-            <span class="arrow">›</span>
-          </div>
-        </div>
-        <div class="info-group">
-          <div class="info-row">
-            <span>清空聊天记录</span>
-            <span class="arrow">›</span>
-          </div>
-          <div class="info-row">
-            <span>投诉</span>
-            <span class="arrow">›</span>
-          </div>
-        </div>
-      </section>
-    </section>
-  </main>
   <script>
-    const START_DATE = "2024-09-01";
-    const lockScreen = document.getElementById("lockScreen");
-    const chatPage = document.getElementById("chatPage");
-    const infoPage = document.getElementById("infoPage");
-    const backBtn = document.getElementById("backBtn");
-    const moreBtn = document.getElementById("moreBtn");
-    const infoBackBtn = document.getElementById("infoBackBtn");
-    const bigTime = document.getElementById("bigTime");
-    const togetherDays = document.getElementById("togetherDays");
-    let startY = 0;
-    let endY = 0;
+    const START_DATE = `2024-09-01`
+    const lockScreen = document.getElementById(`lockScreen`)
+    const chatPage = document.getElementById(`chatPage`)
+    const infoPage = document.getElementById(`infoPage`)
+    const backBtn = document.getElementById(`backBtn`)
+    const moreBtn = document.getElementById(`moreBtn`)
+    const infoBackBtn = document.getElementById(`infoBackBtn`)
+    const bigTime = document.getElementById(`bigTime`)
+    const togetherDays = document.getElementById(`togetherDays`)
+    const sendBtn = document.getElementById(`sendBtn`)
+    const messageInput = document.getElementById(`messageInput`)
+    const chatBody = document.getElementById(`chatBody`)
+    let startY = 0
+    let endY = 0
     function formatTime() {
-      const now = new Date();
-      const h = String(now.getHours()).padStart(2, "0");
-      const m = String(now.getMinutes()).padStart(2, "0");
-      return h + ":" + m;
+      const now = new Date()
+      const h = String(now.getHours()).padStart(2, `0`)
+      const m = String(now.getMinutes()).padStart(2, `0`)
+      return h + `:` + m
     }
     function getTogetherDays() {
-      const start = new Date(START_DATE + "T00:00:00");
-      const now = new Date();
-      const diff = now.getTime() - start.getTime();
-      return Math.floor(diff / 86400000);
+      const start = new Date(START_DATE + `T00:00:00`)
+      const now = new Date()
+      const diff = now.getTime() - start.getTime()
+      return Math.floor(diff / 86400000)
     }
     function refreshLockInfo() {
-      bigTime.textContent = formatTime();
-      togetherDays.textContent = "我们在一起" + getTogetherDays() + "天了。";
+      bigTime.textContent = formatTime()
+      togetherDays.textContent = `我们在一起` + getTogetherDays() + `天了。`
     }
     function showLock() {
-      lockScreen.classList.remove("hidden");
-      chatPage.classList.add("hidden");
-      infoPage.classList.add("hidden");
+      lockScreen.classList.remove(`hidden`)
+      chatPage.classList.add(`hidden`)
+      infoPage.classList.add(`hidden`)
     }
     function showChat() {
-      lockScreen.classList.add("hidden");
-      chatPage.classList.remove("hidden");
-      infoPage.classList.add("hidden");
+      lockScreen.classList.add(`hidden`)
+      chatPage.classList.remove(`hidden`)
+      infoPage.classList.add(`hidden`)
     }
     function showInfo() {
-      lockScreen.classList.add("hidden");
-      chatPage.classList.add("hidden");
-      infoPage.classList.remove("hidden");
+      lockScreen.classList.add(`hidden`)
+      chatPage.classList.add(`hidden`)
+      infoPage.classList.remove(`hidden`)
     }
-    lockScreen.addEventListener("touchstart", function(event) {
-      startY = event.touches[0].clientY;
-    });
-    lockScreen.addEventListener("touchend", function(event) {
-      endY = event.changedTouches[0].clientY;
+    function sendMessage() {
+      const text = messageInput.value.trim()
+      if (!text) return
+      const msg = document.createElement(`div`)
+      msg.className = `msg me`
+      msg.textContent = text
+      chatBody.appendChild(msg)
+      messageInput.value = ``
+      chatBody.scrollTop = chatBody.scrollHeight
+    }
+    lockScreen.addEventListener(`touchstart`, function(event) {
+      startY = event.touches[0].clientY
+    })
+    lockScreen.addEventListener(`touchend`, function(event) {
+      endY = event.changedTouches[0].clientY
       if (startY - endY > 60) {
-        showChat();
+        showChat()
       }
-    });
-    lockScreen.addEventListener("mousedown", function(event) {
-      startY = event.clientY;
-    });
-    lockScreen.addEventListener("mouseup", function(event) {
-      endY = event.clientY;
+    })
+    lockScreen.addEventListener(`mousedown`, function(event) {
+      startY = event.clientY
+    })
+    lockScreen.addEventListener(`mouseup`, function(event) {
+      endY = event.clientY
       if (startY - endY > 60) {
-        showChat();
+        showChat()
       }
-    });
-    backBtn.addEventListener("click", showLock);
-    moreBtn.addEventListener("click", showInfo);
-    infoBackBtn.addEventListener("click", showChat);
-    refreshLockInfo();
-    setInterval(refreshLockInfo, 20000);
+    })
+    backBtn.addEventListener(`click`, showLock)
+    moreBtn.addEventListener(`click`, showInfo)
+    infoBackBtn.addEventListener(`click`, showChat)
+    sendBtn.addEventListener(`click`, sendMessage)
+    messageInput.addEventListener(`keydown`, function(event) {
+      if (event.key === `Enter`) {
+        sendMessage()
+      }
+    })
+    refreshLockInfo()
+    setInterval(refreshLockInfo, 20000)
   </script>
 </body>
 </html>
