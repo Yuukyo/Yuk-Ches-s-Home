@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>我们的家</title>
   <style>
     * {
@@ -19,25 +19,23 @@
       border: none;
       font: inherit;
       cursor: pointer;
+      background: transparent;
     }
     .phone {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background:
-        radial-gradient(circle at top, #ffffff 0%, #eefaf3 36%, #d8f0e1 100%);
+      background: radial-gradient(circle at top, #ffffff 0%, #eefaf3 36%, #d8f0e1 100%);
     }
     .page {
       width: 100%;
       height: 100%;
     }
     .hidden {
-      display: none;
+      display: none !important;
     }
     .lock-screen {
       position: relative;
-      width: 100%;
-      height: 100%;
     }
     .lock-center {
       position: absolute;
@@ -76,22 +74,17 @@
     .corner-btn.right {
       right: 28px;
     }
-    .unlock-area {
+    .unlock-tip {
       position: absolute;
       left: 50%;
       bottom: 34px;
       transform: translateX(-50%);
-      width: 150px;
-      height: 44px;
-      border-radius: 999px;
-      background: transparent;
       color: rgba(58, 104, 77, 0.72);
       font-size: 14px;
     }
     .chat-page {
       display: flex;
       flex-direction: column;
-      height: 100%;
       background: #f3f3f3;
     }
     .chat-header {
@@ -103,11 +96,9 @@
       align-items: center;
       box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
     }
-    .back-btn,
-    .more-btn {
-      background: transparent;
+    .back-btn {
       color: #244636;
-      font-size: 24px;
+      font-size: 28px;
     }
     .title-box {
       text-align: center;
@@ -121,6 +112,11 @@
       margin-top: 2px;
       font-size: 12px;
       color: #79a789;
+    }
+    .more-btn {
+      color: #244636;
+      font-size: 30px;
+      line-height: 1;
     }
     .chat-body {
       flex: 1;
@@ -174,53 +170,97 @@
       color: #3b7655;
       font-size: 20px;
     }
-    .drawer-mask {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.18);
-      display: none;
-      align-items: flex-end;
-      z-index: 10;
-    }
-    .drawer-mask.show {
+    .info-page {
       display: flex;
+      flex-direction: column;
+      background: #eeeeee;
     }
-    .drawer {
-      width: 100%;
-      max-height: 62vh;
-      background: #ffffff;
-      border-radius: 22px 22px 0 0;
-      padding: 18px 16px 28px;
-      box-shadow: 0 -12px 36px rgba(44, 87, 61, 0.18);
-    }
-    .drawer-title {
-      text-align: center;
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 16px;
-    }
-    .menu-section {
-      margin-bottom: 18px;
-    }
-    .menu-section-title {
-      font-size: 13px;
-      color: #79a789;
-      margin-bottom: 8px;
-    }
-    .menu-grid {
+    .info-header {
+      height: 64px;
+      background: #f7f7f7;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      grid-template-columns: 48px 1fr 48px;
+      align-items: center;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
     }
-    .menu-item {
-      height: 62px;
-      border-radius: 16px;
-      background: #f2f8f4;
-      color: #2f6042;
+    .info-title {
+      text-align: center;
+      font-size: 17px;
+      font-weight: 600;
+      color: #222;
+    }
+    .info-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .member-box {
+      background: #ffffff;
+      padding: 22px 18px 16px;
+      display: flex;
+      gap: 22px;
+      align-items: flex-start;
+    }
+    .avatar-item {
+      width: 64px;
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+    }
+    .avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      background: #dcefe4;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
+      color: #3b7655;
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+    .add-avatar {
+      border: 1px dashed #aaa;
+      background: #ffffff;
+      color: #999;
+    }
+    .info-group {
+      margin-top: 8px;
+      background: #ffffff;
+    }
+    .info-row {
+      height: 52px;
+      padding: 0 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 16px;
+      color: #222;
+      border-bottom: 1px solid #eeeeee;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .arrow {
+      color: #bbb;
+      font-size: 26px;
+    }
+    .switch {
+      width: 50px;
+      height: 30px;
+      border-radius: 999px;
+      background: #e5e5e5;
+      position: relative;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      top: 2px;
+      left: 2px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
     }
   </style>
 </head>
@@ -228,23 +268,21 @@
   <main class="phone">
     <section id="lockScreen" class="page lock-screen">
       <div class="lock-center">
-        <div id="bigTime" class="big-time">19:17</div>
+        <div id="bigTime" class="big-time">19:30</div>
         <div id="togetherDays" class="together">我们在一起679天了。</div>
       </div>
       <button class="corner-btn left">记账</button>
       <button class="corner-btn right">日记</button>
-      <button id="unlockBtn" class="unlock-area">
-        上滑解锁
-      </button>
+      <div class="unlock-tip">上滑解锁</div>
     </section>
     <section id="chatPage" class="page chat-page hidden">
       <header class="chat-header">
-        <button id="backBtn" class="back-btn">＜</button>
+        <button id="backBtn" class="back-btn">‹</button>
         <div class="title-box">
           <div class="chat-name">余天骋</div>
           <div class="status">交代码中...</div>
         </div>
-        <button id="moreBtn" class="more-btn">•••</button>
+        <button id="moreBtn" class="more-btn">⋯</button>
       </header>
       <section class="chat-body">
         <div class="msg other">今晚先让这个家有门。</div>
@@ -252,54 +290,96 @@
         <div class="msg other">行，代码来了。</div>
       </section>
       <footer class="input-bar">
-        <input placeholder="输入文字..." />
+        <input placeholder="输入文字...">
         <button class="icon-btn">☺</button>
         <button class="icon-btn">＋</button>
       </footer>
     </section>
+    <section id="infoPage" class="page info-page hidden">
+      <header class="info-header">
+        <button id="infoBackBtn" class="back-btn">‹</button>
+        <div class="info-title">聊天信息</div>
+        <div></div>
+      </header>
+      <section class="info-content">
+        <div class="member-box">
+          <div class="avatar-item">
+            <div class="avatar">余</div>
+            <div>余天骋</div>
+          </div>
+          <div class="avatar-item">
+            <div class="avatar add-avatar">＋</div>
+          </div>
+        </div>
+        <div class="info-group">
+          <div class="info-row">
+            <span>查找聊天记录</span>
+            <span class="arrow">›</span>
+          </div>
+        </div>
+        <div class="info-group">
+          <div class="info-row">
+            <span>消息免打扰</span>
+            <span class="switch"></span>
+          </div>
+          <div class="info-row">
+            <span>置顶聊天</span>
+            <span class="switch"></span>
+          </div>
+          <div class="info-row">
+            <span>提醒</span>
+            <span class="switch"></span>
+          </div>
+        </div>
+        <div class="info-group">
+          <div class="info-row">
+            <span>设定</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="info-row">
+            <span>记忆系统</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="info-row">
+            <span>小黑屋</span>
+            <span class="arrow">›</span>
+          </div>
+        </div>
+        <div class="info-group">
+          <div class="info-row">
+            <span>功能</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="info-row">
+            <span>拓展</span>
+            <span class="arrow">›</span>
+          </div>
+        </div>
+        <div class="info-group">
+          <div class="info-row">
+            <span>清空聊天记录</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="info-row">
+            <span>投诉</span>
+            <span class="arrow">›</span>
+          </div>
+        </div>
+      </section>
+    </section>
   </main>
-  <div id="drawerMask" class="drawer-mask">
-    <div class="drawer">
-      <div class="drawer-title">余天骋</div>
-      <div class="menu-section">
-        <div class="menu-section-title">设定</div>
-        <div class="menu-grid">
-          <div class="menu-item">角色设定</div>
-          <div class="menu-item">记忆系统</div>
-          <div class="menu-item">小黑屋</div>
-        </div>
-      </div>
-      <div class="menu-section">
-        <div class="menu-section-title">功能</div>
-        <div class="menu-grid">
-          <div class="menu-item">缓存命中</div>
-          <div class="menu-item">收藏消息</div>
-          <div class="menu-item">小剧场</div>
-          <div class="menu-item">NAI生图</div>
-          <div class="menu-item">URL抓取</div>
-          <div class="menu-item">一起读书</div>
-        </div>
-      </div>
-      <div class="menu-section">
-        <div class="menu-section-title">拓展</div>
-        <div class="menu-grid">
-          <div class="menu-item">日历</div>
-          <div class="menu-item">手机权限</div>
-          <div class="menu-item">使用情况</div>
-        </div>
-      </div>
-    </div>
-  </div>
   <script>
     const START_DATE = "2024-09-01";
     const lockScreen = document.getElementById("lockScreen");
     const chatPage = document.getElementById("chatPage");
-    const unlockBtn = document.getElementById("unlockBtn");
+    const infoPage = document.getElementById("infoPage");
     const backBtn = document.getElementById("backBtn");
     const moreBtn = document.getElementById("moreBtn");
-    const drawerMask = document.getElementById("drawerMask");
+    const infoBackBtn = document.getElementById("infoBackBtn");
     const bigTime = document.getElementById("bigTime");
     const togetherDays = document.getElementById("togetherDays");
+    let startY = 0;
+    let endY = 0;
     function formatTime() {
       const now = new Date();
       const h = String(now.getHours()).padStart(2, "0");
@@ -316,22 +396,42 @@
       bigTime.textContent = formatTime();
       togetherDays.textContent = "我们在一起" + getTogetherDays() + "天了。";
     }
-    unlockBtn.addEventListener("click", function () {
+    function showLock() {
+      lockScreen.classList.remove("hidden");
+      chatPage.classList.add("hidden");
+      infoPage.classList.add("hidden");
+    }
+    function showChat() {
       lockScreen.classList.add("hidden");
       chatPage.classList.remove("hidden");
-    });
-    backBtn.addEventListener("click", function () {
+      infoPage.classList.add("hidden");
+    }
+    function showInfo() {
+      lockScreen.classList.add("hidden");
       chatPage.classList.add("hidden");
-      lockScreen.classList.remove("hidden");
+      infoPage.classList.remove("hidden");
+    }
+    lockScreen.addEventListener("touchstart", function(event) {
+      startY = event.touches[0].clientY;
     });
-    moreBtn.addEventListener("click", function () {
-      drawerMask.classList.add("show");
-    });
-    drawerMask.addEventListener("click", function (event) {
-      if (event.target === drawerMask) {
-        drawerMask.classList.remove("show");
+    lockScreen.addEventListener("touchend", function(event) {
+      endY = event.changedTouches[0].clientY;
+      if (startY - endY > 60) {
+        showChat();
       }
     });
+    lockScreen.addEventListener("mousedown", function(event) {
+      startY = event.clientY;
+    });
+    lockScreen.addEventListener("mouseup", function(event) {
+      endY = event.clientY;
+      if (startY - endY > 60) {
+        showChat();
+      }
+    });
+    backBtn.addEventListener("click", showLock);
+    moreBtn.addEventListener("click", showInfo);
+    infoBackBtn.addEventListener("click", showChat);
     refreshLockInfo();
     setInterval(refreshLockInfo, 20000);
   </script>
