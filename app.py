@@ -1,4 +1,3 @@
-```python
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from supabase import create_client
@@ -125,4 +124,3 @@ def chat():
         return jsonify({"error": "后端请求出错"}), 500
 if __name__ == "__main__":
     app.run(debug=True)
-```
