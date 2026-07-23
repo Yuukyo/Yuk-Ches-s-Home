@@ -61,6 +61,19 @@ def save_message(role, content):
 @app.route("/")
 def index():
     return render_template("index.html")
+@app.route("/api/history", methods=["GET"])
+def get_history():
+    try:
+        result = (
+            supabase.table("messages")
+            .select("id, role, content, created_at")
+            .order("created_at")
+            .execute()
+        )
+        return jsonify(result.data or [])
+    except Exception as error:
+        print("读取历史接口异常：", error)
+        return jsonify({"error": "读取历史消息失败"}), 500
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
