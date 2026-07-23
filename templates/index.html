@@ -520,16 +520,50 @@
       chatPage.classList.add(`hidden`)
       infoPage.classList.remove(`hidden`)
     }
-    function sendMessage() {
-      const text = messageInput.value.trim()
-      if (!text) return
-      const msg = document.createElement(`div`)
-      msg.className = `msg me`
-      msg.textContent = text
-      chatBody.appendChild(msg)
-      messageInput.value = ``
-      chatBody.scrollTop = chatBody.scrollHeight
+async function sendMessage() {
+  const text = messageInput.value.trim()
+  if (!text || sendBtn.disabled) return
+  const userMsg = document.createElement(`div`)
+  userMsg.className = `msg me`
+  userMsg.textContent = text
+  chatBody.appendChild(userMsg)
+  messageInput.value = ``
+  chatBody.scrollTop = chatBody.scrollHeight
+  sendBtn.disabled = true
+  sendBtn.textContent = `等待中`
+  const waitingMsg = document.createElement(`div`)
+  waitingMsg.className = `msg other`
+  waitingMsg.textContent = `正在输入...`
+  chatBody.appendChild(waitingMsg)
+  chatBody.scrollTop = chatBody.scrollHeight
+  try {
+    const response = await fetch(`/api/chat`, {
+      method: `POST`,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: text
+      })
+    })
+    const data = await response.json()
+    waitingMsg.remove()
+    if (!response.ok) {
+      throw new Error(data.error || `请求失败`)
     }
+    const aiMsg = document.createElement(`div`)
+    aiMsg.className = `msg other`
+    aiMsg.textContent = data.reply
+    chatBody.appendChild(aiMsg)
+  } catch (error) {
+    waitingMsg.textContent = `出错了：` + error.message
+  } finally {
+    sendBtn.disabled = false
+    sendBtn.textContent = `发送`
+    messageInput.focus()
+    chatBody.scrollTop = chatBody.scrollHeight
+  }
+}
     lockScreen.addEventListener(`touchstart`, function(event) {
       startY = event.touches[0].clientY
     })
