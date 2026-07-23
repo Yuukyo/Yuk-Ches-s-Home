@@ -60,7 +60,7 @@ def save_message(role, content):
         print("保存消息失败：", error)
 @app.route("/")
 def index():
-    返回 render_template("index.html")
+    return render_template("index.html")
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
