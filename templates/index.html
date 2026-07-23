@@ -487,6 +487,26 @@
     const sendBtn = document.getElementById(`sendBtn`)
     const messageInput = document.getElementById(`messageInput`)
     const chatBody = document.getElementById(`chatBody`)
+    async function loadHistory() {
+  try {
+    const response = await fetch("/api/history")
+    const data = await response.json()
+    if (!response.ok) {
+      throw new Error(data.error || "读取失败")
+    }
+    chatBody.innerHTML = ""
+    data.forEach(item => {
+      const msg = document.createElement("div")
+      msg.className = item.role === "user" ? "msg me" : "msg other"
+      msg.textContent = item.content
+      chatBody.appendChild(msg)
+    })
+    chatBody.scrollTop = chatBody.scrollHeight
+  } catch (error) {
+    console.error("加载历史消息失败：", error)
+  }
+}
+loadHistory()
     let startY = 0
     let endY = 0
     function formatTime() {
