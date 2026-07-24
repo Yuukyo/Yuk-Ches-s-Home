@@ -124,13 +124,13 @@ def chat():
             json=request_body,
             timeout=120
         )
-        if not responese.ok:
+        if not response.ok:
             print(
                 "API错误：",
-                响应。状态码,
+                response.status_code,
                 response.text
             )
-            返回 jsonify({
+            return jsonify({
                 "error": f"API请求失败：{response.status_code}"
             }), 502
         result = response.json()
