@@ -636,6 +636,7 @@ messageInput.addEventListener("keydown", event => {
   if (event.key !== "Enter") return
   if (event.shiftKey) return
   event.preventDefault()
+  event.stopImmediatePropagation()
   stageCurrentMessage()
 })
   refreshLockInfo()
