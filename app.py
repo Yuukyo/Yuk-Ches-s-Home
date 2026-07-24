@@ -124,7 +124,7 @@ def chat():
             json=request_body,
             timeout=120
         )
-        如果 不是响应。成功:
+        if not responese.ok:
             print(
                 "API错误：",
                 响应。状态码,
