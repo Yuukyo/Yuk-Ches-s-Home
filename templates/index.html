@@ -207,16 +207,22 @@
       align-items: center;
       padding: 0 8px 0 16px;
     }
-    .input-wrap input {
-      flex: 1;
-      min-width: 0;
-      height: 100%;
-      border: none;
-      outline: none;
-      background: transparent;
-      color: #26382f;
-      font-size: 15px;
-    }
+    .input-wrap textarea {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  max-height: 38px;
+  padding: 9px 0;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: #26382f;
+  font: inherit;
+  font-size: 15px;
+  line-height: 20px;
+   }
     .face-btn {
       width: 36px;
       height: 36px;
@@ -369,7 +375,7 @@
         <footer class=input-bar>
           <button class=plus-btn>＋</button>
           <div class=input-wrap>
-            <input id=messageInput placeholder=输入文字...>
+            <textarea id="messageInput" rows="1" placeholder="输入文字..."></textarea>
             <button class=face-btn>☺</button>
           </div>
           <button id=sendBtn class=send-btn>发送</button>
@@ -474,145 +480,171 @@
       </section>
     </main>
   </div>
-  <script>
-    const START_DATE = `2024-09-01`
-    const lockScreen = document.getElementById(`lockScreen`)
-    const chatPage = document.getElementById(`chatPage`)
-    const infoPage = document.getElementById(`infoPage`)
-    const backBtn = document.getElementById(`backBtn`)
-    const moreBtn = document.getElementById(`moreBtn`)
-    const infoBackBtn = document.getElementById(`infoBackBtn`)
-    const bigTime = document.getElementById(`bigTime`)
-    const togetherDays = document.getElementById(`togetherDays`)
-    const sendBtn = document.getElementById(`sendBtn`)
-    const messageInput = document.getElementById(`messageInput`)
-    const chatBody = document.getElementById(`chatBody`)
-    async function loadHistory() {
-  try {
-    const response = await fetch("/api/history")
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(data.error || "读取失败")
-    }
-    chatBody.innerHTML = ""
-    data.forEach(item => {
-      const msg = document.createElement("div")
-      msg.className = item.role === "user" ? "msg me" : "msg other"
-      msg.textContent = item.content
-      chatBody.appendChild(msg)
-    })
+<script>
+  const START_DATE = "2024-09-01"
+  const lockScreen = document.getElementById("lockScreen")
+  const chatPage = document.getElementById("chatPage")
+  const infoPage = document.getElementById("infoPage")
+  const backBtn = document.getElementById("backBtn")
+  const moreBtn = document.getElementById("moreBtn")
+  const infoBackBtn = document.getElementById("infoBackBtn")
+  const bigTime = document.getElementById("bigTime")
+  const togetherDays = document.getElementById("togetherDays")
+  const sendBtn = document.getElementById("sendBtn")
+  const messageInput = document.getElementById("messageInput")
+  const chatBody = document.getElementById("chatBody")
+  let startY = 0
+  let endY = 0
+  let requestInFlight = false
+  let pendingMessages = []
+  function appendMessage(content, role) {
+    const msg = document.createElement("div")
+    msg.className = role === "user" ? "msg me" : "msg other"
+    msg.textContent = content
+    chatBody.appendChild(msg)
     chatBody.scrollTop = chatBody.scrollHeight
-  } catch (error) {
-    console.error("加载历史消息失败：", error)
+    return msg
   }
-}
-loadHistory()
-    let startY = 0
-    let endY = 0
-    function formatTime() {
-      const now = new Date()
-      const h = String(now.getHours()).padStart(2, `0`)
-      const m = String(now.getMinutes()).padStart(2, `0`)
-      return h + `:` + m
-    }
-    function getTogetherDays() {
-      const start = new Date(START_DATE + `T00:00:00`)
-      const now = new Date()
-      const diff = now.getTime() - start.getTime()
-      return Math.floor(diff / 86400000)
-    }
-    function refreshLockInfo() {
-      bigTime.textContent = formatTime()
-      togetherDays.textContent = `我们在一起` + getTogetherDays() + `天了。`
-    }
-    function showLock() {
-      lockScreen.classList.remove(`hidden`)
-      chatPage.classList.add(`hidden`)
-      infoPage.classList.add(`hidden`)
-    }
-    function showChat() {
-      lockScreen.classList.add(`hidden`)
-      chatPage.classList.remove(`hidden`)
-      infoPage.classList.add(`hidden`)
-    }
-    function showInfo() {
-      lockScreen.classList.add(`hidden`)
-      chatPage.classList.add(`hidden`)
-      infoPage.classList.remove(`hidden`)
-    }
-async function sendMessage() {
-  const text = messageInput.value.trim()
-  if (!text || sendBtn.disabled) return
-  const userMsg = document.createElement(`div`)
-  userMsg.className = `msg me`
-  userMsg.textContent = text
-  chatBody.appendChild(userMsg)
-  messageInput.value = ``
-  chatBody.scrollTop = chatBody.scrollHeight
-  sendBtn.disabled = true
-  sendBtn.textContent = `等待中`
-  const waitingMsg = document.createElement(`div`)
-  waitingMsg.className = `msg other`
-  waitingMsg.textContent = `正在输入...`
-  chatBody.appendChild(waitingMsg)
-  chatBody.scrollTop = chatBody.scrollHeight
-  try {
-    const response = await fetch(`/api/chat`, {
-      method: `POST`,
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: text
+  async function loadHistory() {
+    try {
+      const response = await fetch("/api/history")
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "读取失败")
+      }
+      chatBody.innerHTML = ""
+      data.forEach(item => {
+        appendMessage(item.content, item.role)
       })
-    })
-    const data = await response.json()
-    waitingMsg.remove()
-    if (!response.ok) {
-      throw new Error(data.error || `请求失败`)
+    } catch (error) {
+      console.error("加载历史消息失败：", error)
     }
-    const aiMsg = document.createElement(`div`)
-    aiMsg.className = `msg other`
-    aiMsg.textContent = data.reply
-    chatBody.appendChild(aiMsg)
-  } catch (error) {
-    waitingMsg.textContent = `出错了：` + error.message
-  } finally {
-    sendBtn.disabled = false
-    sendBtn.textContent = `发送`
-    messageInput.focus()
-    chatBody.scrollTop = chatBody.scrollHeight
   }
-}
-    lockScreen.addEventListener(`touchstart`, function(event) {
-      startY = event.touches[0].clientY
-    })
-    lockScreen.addEventListener(`touchend`, function(event) {
-      endY = event.changedTouches[0].clientY
-      if (startY - endY > 60) {
-        showChat()
+  function stageCurrentMessage() {
+    const text = messageInput.value.trim()
+    if (!text) {
+      return false
+    }
+    pendingMessages.push(text)
+    appendMessage(text, "user")
+    messageInput.value = ""
+    messageInput.focus()
+    return true
+  }
+  async function submitPendingMessages() {
+    stageCurrentMessage()
+    if (requestInFlight || pendingMessages.length === 0) {
+      return
+    }
+    const currentBatch = [...pendingMessages]
+    pendingMessages = []
+    requestInFlight = true
+    sendBtn.disabled = true
+    sendBtn.textContent = "等待中"
+    const waitingMsg = appendMessage(
+      "正在输入...",
+      "assistant"
+    )
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messages: currentBatch
+        })
+      })
+      const data = await response.json()
+      waitingMsg.remove()
+      if (!response.ok) {
+        throw new Error(data.error || "请求失败")
       }
-    })
-    lockScreen.addEventListener(`mousedown`, function(event) {
-      startY = event.clientY
-    })
-    lockScreen.addEventListener(`mouseup`, function(event) {
-      endY = event.clientY
-      if (startY - endY > 60) {
-        showChat()
-      }
-    })
-    backBtn.addEventListener(`click`, showLock)
-    moreBtn.addEventListener(`click`, showInfo)
-    infoBackBtn.addEventListener(`click`, showChat)
-    sendBtn.addEventListener(`click`, sendMessage)
-    messageInput.addEventListener(`keydown`, function(event) {
-      if (event.key === `Enter`) {
-        sendMessage()
-      }
-    })
-    refreshLockInfo()
-    setInterval(refreshLockInfo, 20000)
-  </script>
+      appendMessage(data.reply, "assistant")
+    } catch (error) {
+      waitingMsg.textContent = "出错了：" + error.message
+      pendingMessages = [
+        ...currentBatch,
+        ...pendingMessages
+      ]
+    } finally {
+      requestInFlight = false
+      sendBtn.disabled = false
+      sendBtn.textContent = "发送"
+      messageInput.focus()
+      chatBody.scrollTop = chatBody.scrollHeight
+    }
+  }
+  function formatTime() {
+    const now = new Date()
+    const h = String(now.getHours()).padStart(2, "0")
+    const m = String(now.getMinutes()).padStart(2, "0")
+    return h + ":" + m
+  }
+  function getTogetherDays() {
+    const start = new Date(START_DATE + "T00:00:00")
+    const now = new Date()
+    const diff = now.getTime() - start.getTime()
+    return Math.floor(diff / 86400000)
+  }
+  function refreshLockInfo() {
+    bigTime.textContent = formatTime()
+    togetherDays.textContent =
+      "我们在一起" + getTogetherDays() + "天了。"
+  }
+  function showLock() {
+    lockScreen.classList.remove("hidden")
+    chatPage.classList.add("hidden")
+    infoPage.classList.add("hidden")
+  }
+  function showChat() {
+    lockScreen.classList.add("hidden")
+    chatPage.classList.remove("hidden")
+    infoPage.classList.add("hidden")
+  }
+  function showInfo() {
+    lockScreen.classList.add("hidden")
+    chatPage.classList.add("hidden")
+    infoPage.classList.remove("hidden")
+  }
+  lockScreen.addEventListener("touchstart", event => {
+    startY = event.touches[0].clientY
+  })
+  lockScreen.addEventListener("touchend", event => {
+    endY = event.changedTouches[0].clientY
+    if (startY - endY > 60) {
+      showChat()
+    }
+  })
+  lockScreen.addEventListener("mousedown", event => {
+    startY = event.clientY
+  })
+  lockScreen.addEventListener("mouseup", event => {
+    endY = event.clientY
+    if (startY - endY > 60) {
+      showChat()
+    }
+  })
+  backBtn.addEventListener("click", showLock)
+  moreBtn.addEventListener("click", showInfo)
+  infoBackBtn.addEventListener("click", showChat)
+  sendBtn.addEventListener(
+    "click",
+    submitPendingMessages
+  )
+  messageInput.addEventListener("keydown", event => {
+    if (event.key !== "Enter") {
+      return
+    }
+    if (event.shiftKey) {
+      return
+    }
+    event.preventDefault()
+    stageCurrentMessage()
+  })
+  refreshLockInfo()
+  setInterval(refreshLockInfo, 20000)
+  loadHistory()
+</script>
 </body>
 </html>
