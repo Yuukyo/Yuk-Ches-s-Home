@@ -141,7 +141,7 @@ def chat():
             .strip()
         )
         if not reply:
-            返回 jsonify({
+            return jsonify({
                 "error": "AI没有返回内容"
             }), 502
         for content in user_messages:
