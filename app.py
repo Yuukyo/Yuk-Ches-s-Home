@@ -145,8 +145,8 @@ def chat():
                 "error": "AI没有返回内容"
             }), 502
         for content in user_messages:
-            save_message("用户", 内容)
-        save_message("助手", 回复)
+            save_message("user", content)
+        save_message("assistant", reply)
         return jsonify({
             "reply": reply
         })
