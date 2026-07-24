@@ -144,7 +144,7 @@ def chat():
             返回 jsonify({
                 "error": "AI没有返回内容"
             }), 502
-        对于内容 在用户消息中：
+        for content in user_messages:
             保存消息("用户", 内容)
         保存消息("助手", 回复)
         return jsonify({
