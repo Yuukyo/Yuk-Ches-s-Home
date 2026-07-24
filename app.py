@@ -63,10 +63,12 @@ def index():
     return render_template("index.html")
 @app.route("/api/history", methods=["GET"])
 def get_history():
+    if not supabase:
+        return jsonify([])
     try:
         result = (
             supabase.table("messages")
-            .select("id, role, content, created_at")
+            .select("id,role,content,created_at")
             .order("created_at")
             .execute()
         )
@@ -77,15 +79,22 @@ def get_history():
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
-    user_msg = str(data.get("message", "")).strip()
-    if not user_msg:
+    incoming = data.get("messages")
+    if not isinstance(incoming, list):
+        old_message = str(data.get("message", "")).strip()
+        incoming = [old_message] if old_message else []
+    user_messages = [
+        str(item).strip()
+        for item in incoming
+        if str(item).strip()
+    ]
+    if not user_messages:
         return jsonify({"error": "消息不能为空"}), 400
     if not API_URL or not API_KEY or not API_MODEL:
         return jsonify({
             "error": "API尚未配置，请检查Render环境变量"
         }), 500
     history = load_recent_messages()
-    save_message("user", user_msg)
     messages = [
         {
             "role": "system",
@@ -93,10 +102,11 @@ def chat():
         }
     ]
     messages.extend(history)
-    messages.append({
-        "role": "user",
-        "content": user_msg
-    })
+    for content in user_messages:
+        messages.append({
+            "role": "user",
+            "content": content
+        })
     request_body = {
         "model": API_MODEL,
         "messages": messages,
@@ -114,9 +124,13 @@ def chat():
             json=request_body,
             timeout=120
         )
-        if not response.ok:
-            print("API错误：", response.status_code, response.text)
-            return jsonify({
+        如果 不是响应。成功:
+            print(
+                "API错误：",
+                响应。状态码,
+                response.text
+            )
+            返回 jsonify({
                 "error": f"API请求失败：{response.status_code}"
             }), 502
         result = response.json()
@@ -127,13 +141,23 @@ def chat():
             .strip()
         )
         if not reply:
-            return jsonify({"error": "AI没有返回内容"}), 502
-        save_message("assistant", reply)
-        return jsonify({"reply": reply})
+            返回 jsonify({
+                "error": "AI没有返回内容"
+            }), 502
+        对于内容 在用户消息中：
+            保存消息("用户", 内容)
+        保存消息("助手", 回复)
+        return jsonify({
+            "reply": reply
+        })
     except requests.Timeout:
-        return jsonify({"error": "AI响应超时，请稍后重试"}), 504
+        return jsonify({
+            "error": "AI响应超时，请稍后重试"
+        }), 504
     except Exception as error:
         print("聊天接口异常：", error)
-        return jsonify({"error": "后端请求出错"}), 500
+        return jsonify({
+            "error": "后端请求出错"
+        }), 500
 if __name__ == "__main__":
     app.run(debug=True)
