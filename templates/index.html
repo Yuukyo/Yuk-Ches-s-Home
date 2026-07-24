@@ -628,10 +628,10 @@
   backBtn.addEventListener("click", showLock)
   moreBtn.addEventListener("click", showInfo)
   infoBackBtn.addEventListener("click", showChat)
-  sendBtn.addEventListener(
-    "click",
-    submitPendingMessages
-  )
+  sendBtn.addEventListener("pointerup", event => {
+  event.preventDefault()
+  submitPendingMessages()
+})
 messageInput.addEventListener("keydown", event => {
   if (event.key !== "Enter") return
   if (event.shiftKey) return
