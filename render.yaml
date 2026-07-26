@@ -21,11 +21,19 @@ services:
         generateValue: true
       - key: APP_PASSWORD
         sync: false
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
       - key: API_URL
         sync: false
       - key: API_KEY
         sync: false
       - key: API_MODEL
+        sync: false
+      - key: VISION_API_URL
+        sync: false
+      - key: VISION_API_KEY
+        sync: false
+      - key: VISION_MODEL
         sync: false
       - key: SUPABASE_URL
         sync: false
@@ -56,4 +64,12 @@ services:
       - key: PROACTIVE_ENABLED
         value: "false"
       - key: CRON_SECRET
+        sync: false
+      - key: WEB_SEARCH_API_URL
+        sync: false
+      - key: WEB_SEARCH_API_KEY
+        sync: false
+      - key: PUSH_WEBHOOK_URL
+        sync: false
+      - key: PUSH_WEBHOOK_TOKEN
         sync: false
