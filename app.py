@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import hmac
 import io
 import json
 import logging
 import os
 import random
+import re
 import secrets
 import time
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
@@ -26,6 +28,7 @@ from flask import (
     session,
 )
 from dotenv import load_dotenv
+from cryptography.fernet import Fernet, InvalidToken
 from werkzeug.utils import secure_filename
 
 load_dotenv()
@@ -37,6 +40,8 @@ from integrations import (
     ImageClient,
     IntegrationError,
     OmbreBrainClient,
+    SearchClient,
+    send_push_notification,
     weather_now,
 )
 from store import Store
@@ -56,27 +61,65 @@ app.config.update(
     MAX_CONTENT_LENGTH=15 * 1024 * 1024,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=os.getenv("FLASK_ENV") != "development",
-    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30,
+    SESSION_COOKIE_SECURE=cfg.session_cookie_secure,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=max(cfg.remember_days, 1)),
 )
 
 store = Store(cfg.supabase_url, cfg.supabase_key)
-ai = AIClient(cfg.api_url, cfg.api_key, cfg.api_model)
 memory = OmbreBrainClient(cfg.ombre_url, cfg.ombre_token, cfg.ombre_enabled)
 reader = CoReadingClient(
     cfg.reading_url,
     cfg.reading_mcp_url,
     cfg.reading_token,
 )
-image_ai = ImageClient(
-    cfg.image_provider,
-    cfg.image_url,
-    cfg.image_key,
-    cfg.image_model,
-    sampler=cfg.nai_sampler,
-    steps=cfg.nai_steps,
-    scale=cfg.nai_scale,
-)
+
+
+def secret_box() -> Fernet:
+    key = base64.urlsafe_b64encode(
+        hashlib.sha256(cfg.app_secret.encode("utf-8")).digest()
+    )
+    return Fernet(key)
+
+
+def integration_overrides() -> dict[str, str]:
+    encrypted = store.get_setting("integration_secrets", "")
+    if not encrypted:
+        return {}
+    try:
+        decoded = secret_box().decrypt(str(encrypted).encode("ascii"))
+        value = json.loads(decoded.decode("utf-8"))
+        return value if isinstance(value, dict) else {}
+    except (InvalidToken, ValueError, TypeError, json.JSONDecodeError):
+        logger.warning("Saved integration settings could not be decrypted")
+        return {}
+
+
+def refresh_integrations() -> None:
+    global ai, vision_ai, image_ai, search_ai
+    saved = integration_overrides()
+    ai = AIClient(
+        saved.get("chat_url") or cfg.api_url,
+        saved.get("chat_key") or cfg.api_key,
+        saved.get("chat_model") or cfg.api_model,
+    )
+    vision_ai = AIClient(
+        saved.get("vision_url") or cfg.vision_url,
+        saved.get("vision_key") or cfg.vision_key,
+        saved.get("vision_model") or cfg.vision_model,
+    )
+    image_ai = ImageClient(
+        saved.get("image_provider") or cfg.image_provider,
+        saved.get("image_url") or cfg.image_url,
+        saved.get("image_key") or cfg.image_key,
+        saved.get("image_model") or cfg.image_model,
+        sampler=cfg.nai_sampler,
+        steps=cfg.nai_steps,
+        scale=cfg.nai_scale,
+    )
+    search_ai = SearchClient(cfg.search_url, cfg.search_key)
+
+
+refresh_integrations()
 upload_root = Path(app.instance_path) / "uploads"
 upload_root.mkdir(parents=True, exist_ok=True)
 
@@ -92,17 +135,21 @@ PUBLIC_API_PATHS = {
 }
 EDITABLE_PROFILE_FIELDS = {
     "character_prompt",
-    "worldbook",
+    "user_prompt",
     "relationship",
     "proactive_enabled",
     "user_name",
     "ai_name",
+    "ai_remark",
+    "record_title",
 }
 ALLOWED_ITEM_KINDS = {
     "note",
     "task",
     "mood",
     "habit",
+    "schedule",
+    "period",
     "attachment",
     "link",
     "music",
@@ -113,6 +160,7 @@ ALLOWED_ITEM_KINDS = {
     "reward",
     "reward_offer",
     "reward_spend",
+    "reward_redemption",
     "shopping_fund",
     "sticker",
     "image",
@@ -121,6 +169,8 @@ ALLOWED_ITEM_KINDS = {
     "ai_favorite",
     "ai_memo",
     "ai_wallet",
+    "ai_reminder",
+    "worldbook",
     "daily_quote",
 }
 
@@ -168,6 +218,7 @@ def same_origin_ok() -> bool:
 def protect_api():
     if (
         request.path.startswith("/api/")
+        and not app.testing
         and request.path not in PUBLIC_API_PATHS
         and not (request.path == "/api/cron/tick" and valid_cron_request())
         and not is_authenticated()
@@ -261,6 +312,12 @@ def logout():
 
 def public_config() -> dict[str, Any]:
     profile = store.get_setting("profile", {}) or {}
+    messages = store.list_messages(limit=1000)
+    recent = messages[-1]["created_at"] if messages else None
+    token_estimate = sum(
+        max(len(str(message.get("content") or "")) // 4, 1)
+        for message in messages
+    )
     return {
         "start_date": cfg.start_date,
         "user_name": profile.get("user_name") or cfg.user_name,
@@ -268,12 +325,20 @@ def public_config() -> dict[str, Any]:
         "timezone": cfg.timezone_name,
         "weather_location": cfg.weather_location,
         "profile": profile,
+        "chat_stats": {
+            "messages": len(messages),
+            "token_estimate": token_estimate,
+            "recent_at": recent,
+        },
         "features": {
             "ai": ai.ready,
+            "vision": vision_ai.ready,
             "supabase": cfg.supabase_ready,
             "memory": memory.enabled,
             "reading": reader.enabled,
             "image": image_ai.ready,
+            "search": search_ai.ready,
+            "push": bool(cfg.push_url),
             "proactive": bool(
                 profile.get("proactive_enabled", cfg.proactive_enabled)
             ),
@@ -311,18 +376,169 @@ def update_settings():
     return jsonify({"profile": current, "config": public_config()})
 
 
-def build_system_prompt(memory_text: str, inner_thought: str = "") -> str:
+def public_integration_config() -> dict[str, Any]:
+    return {
+        "chat": {
+            "url": ai.url,
+            "model": ai.model,
+            "has_key": bool(ai.key),
+        },
+        "vision": {
+            "url": vision_ai.url,
+            "model": vision_ai.model,
+            "has_key": bool(vision_ai.key),
+        },
+        "image": {
+            "provider": image_ai.provider,
+            "url": image_ai.url,
+            "model": image_ai.model,
+            "has_key": bool(image_ai.key),
+        },
+    }
+
+
+@app.get("/api/integrations/config")
+def get_integration_config():
+    return jsonify(public_integration_config())
+
+
+@app.put("/api/integrations/config")
+def update_integration_config():
+    data = request.get_json(silent=True) or {}
+    current = integration_overrides()
+    allowed = {
+        "chat_url",
+        "chat_key",
+        "chat_model",
+        "vision_url",
+        "vision_key",
+        "vision_model",
+        "image_provider",
+        "image_url",
+        "image_key",
+        "image_model",
+    }
+    for key in allowed:
+        if key not in data:
+            continue
+        value = str(data.get(key) or "").strip()
+        if key.endswith("_key") and not value:
+            continue
+        current[key] = value[:4000]
+    encrypted = secret_box().encrypt(
+        json.dumps(current, ensure_ascii=False).encode("utf-8")
+    )
+    store.set_setting("integration_secrets", encrypted.decode("ascii"))
+    refresh_integrations()
+    return jsonify(
+        {
+            "ok": True,
+            "config": public_integration_config(),
+            "features": public_config()["features"],
+        }
+    )
+
+
+def worldbook_context(
+    conversation_text: str = "",
+    injection: str = "middle",
+) -> str:
+    entries = store.list_items(kind="worldbook", limit=500)
+    selected = []
+    lowered = conversation_text.lower()
+    for item in entries:
+        if item.get("status") != "active":
+            continue
+        metadata = item.get("metadata") or {}
+        if str(metadata.get("injection") or "middle") != injection:
+            continue
+        tags = str(metadata.get("tags") or "")
+        keywords = [item.get("title", ""), *tags.replace("，", ",").split(",")]
+        triggered = any(
+            keyword.strip().lower() in lowered
+            for keyword in keywords
+            if keyword.strip()
+        )
+        if metadata.get("global") or metadata.get("always_on") or triggered:
+            selected.append(item)
+    selected.sort(
+        key=lambda item: float((item.get("metadata") or {}).get("weight") or 100),
+        reverse=True,
+    )
+    return "\n\n".join(
+        f"【{item.get('title') or '世界书条目'}】\n{item.get('content') or ''}"
+        for item in selected[:30]
+    )
+
+
+def reality_context() -> str:
+    local = now_local()
+    lines = [
+        f"当前真实时间：{local.isoformat(timespec='minutes')}",
+        f"用户所在天气城市：{cfg.weather_location}",
+    ]
+    cached = store.get_setting("weather_cache", {}) or {}
+    if time.time() - float(cached.get("timestamp") or 0) > 900:
+        try:
+            cached = weather_now(
+                cfg.weather_latitude,
+                cfg.weather_longitude,
+                cfg.weather_location,
+            )
+            cached["timestamp"] = time.time()
+            store.set_setting("weather_cache", cached)
+        except Exception:
+            cached = {}
+    if cached:
+        lines.append(
+            "当前天气："
+            f"{cached.get('condition') or '未知'} "
+            f"{cached.get('temperature') if cached.get('temperature') is not None else ''}°C"
+        )
+    records = [
+        item
+        for item in store.list_items(limit=1000)
+        if item.get("kind") in {"schedule", "period"}
+        and item.get("status") in {"active", "done"}
+    ]
+    for item in records[:20]:
+        lines.append(
+            f"{'日程' if item['kind'] == 'schedule' else '经期记录'}："
+            f"{item.get('title') or ''} "
+            f"{item.get('happened_at') or item.get('created_at') or ''} "
+            f"{item.get('content') or ''}"
+        )
+    return "\n".join(lines)
+
+
+def build_system_prompt(
+    memory_text: str,
+    inner_thought: str = "",
+    conversation_text: str = "",
+) -> str:
     profile = store.get_setting("profile", {}) or {}
     parts = [
+        worldbook_context(conversation_text, "before"),
         cfg.system_prompt,
         profile.get("character_prompt", ""),
-        profile.get("worldbook", ""),
+        profile.get("user_prompt", ""),
         profile.get("relationship", ""),
+        worldbook_context(conversation_text, "middle"),
+        reality_context(),
         (
             "这是一个私密的共同生活空间。自然聊天，不要把界面功能说明当成对话内容。"
             "如果看到“内心想法”，它是用户愿意提供的额外情绪语境，不是要求展示模型思维链。"
+            "你也可以写一句角色化的、可公开给用户点击查看的内心旁白，格式必须是"
+            "[内心想法]旁白[/内心想法]；它不是隐藏推理或思维链。"
+            "如果你真心想在未来某时提醒或主动联系用户，可以额外输出"
+            "[设置提醒:带时区的ISO时间|提醒内容]。"
         ),
     ]
+    if search_ai.ready:
+        parts.append(
+            "当问题需要最新互联网信息时，先只输出[联网搜索:精确查询词]，"
+            "系统拿到搜索结果后会让你继续回答。"
+        )
     if memory_text:
         parts.append(
             "下面是 Ombre Brain 召回的长期经历。只在确实相关时自然使用，"
@@ -330,6 +546,7 @@ def build_system_prompt(memory_text: str, inner_thought: str = "") -> str:
         )
     if inner_thought:
         parts.append("本轮用户额外告诉你的内心想法：" + inner_thought[:2000])
+    parts.append(worldbook_context(conversation_text, "after"))
     return "\n\n".join(str(part).strip() for part in parts if str(part).strip())
 
 
@@ -340,6 +557,8 @@ def ai_history(limit: int = 80) -> list[dict[str, Any]]:
             continue
         content: Any = message.get("content", "")
         metadata = message.get("metadata") or {}
+        if metadata.get("recalled"):
+            content = "[用户撤回了一条消息；你知道发生了撤回，但不知道原文。]"
         quote = metadata.get("quote")
         if quote and message.get("role") == "user":
             content = f"[引用：{quote}]\n{content}"
@@ -397,12 +616,31 @@ def chat():
     incoming = data.get("messages")
     if not isinstance(incoming, list):
         incoming = [data.get("message", "")]
-    texts = [str(item).strip()[:12000] for item in incoming if str(item).strip()]
+    message_inputs: list[dict[str, str]] = []
+    for item in incoming:
+        if isinstance(item, dict):
+            content = str(item.get("content") or "").strip()[:12000]
+            thought = str(item.get("inner_thought") or "").strip()[:2000]
+        else:
+            content = str(item).strip()[:12000]
+            thought = ""
+        if content:
+            message_inputs.append(
+                {"content": content, "inner_thought": thought}
+            )
+    texts = [item["content"] for item in message_inputs]
     if not texts:
         return json_error("消息不能为空")
     if len(texts) > 10:
         return json_error("一次最多连续发送 10 条")
     inner_thought = str(data.get("inner_thought", "")).strip()[:2000]
+    if inner_thought and message_inputs:
+        message_inputs[-1]["inner_thought"] = inner_thought
+    all_thoughts = "\n".join(
+        f"第{index + 1}条：{item['inner_thought']}"
+        for index, item in enumerate(message_inputs)
+        if item["inner_thought"]
+    )
     quote = str(data.get("quote", "")).strip()[:2000]
     attachment_ids = [
         str(item_id)
@@ -411,13 +649,15 @@ def chat():
     ][:6]
 
     created = []
-    for index, text in enumerate(texts):
+    for index, item in enumerate(message_inputs):
         metadata: dict[str, Any] = {}
         if index == 0 and quote:
             metadata["quote"] = quote
-        if index == len(texts) - 1 and inner_thought:
-            metadata["inner_thought"] = inner_thought
-        created.append(store.create_message("user", text, metadata=metadata))
+        if item["inner_thought"]:
+            metadata["inner_thought"] = item["inner_thought"]
+        created.append(
+            store.create_message("user", item["content"], metadata=metadata)
+        )
 
     memory_text = ""
     memory_warning = ""
@@ -463,7 +703,38 @@ def chat():
                     "当前无法提取正文。"
                 )
 
-    system_prompt = build_system_prompt(memory_text, inner_thought)
+    if vision_parts and vision_ai.ready:
+        try:
+            visual_description = vision_ai.chat(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "客观描述图片中可见的内容、文字和重要细节。"
+                            "不要猜测看不见的信息。"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "请识别这些图片。"},
+                            *vision_parts,
+                        ],
+                    },
+                ],
+                temperature=0.2,
+                max_tokens=800,
+            )
+            attachment_notes.append("独立识图 API 的结果：\n" + visual_description)
+            vision_parts = []
+        except IntegrationError as error:
+            logger.warning("Vision API failed, falling back to chat model: %s", error)
+
+    system_prompt = build_system_prompt(
+        memory_text,
+        all_thoughts,
+        "\n".join(texts),
+    )
     if attachment_notes:
         system_prompt += "\n\n" + "\n\n".join(attachment_notes)
     reading_context = str(data.get("reading_context", "")).strip()[:20000]
@@ -489,13 +760,71 @@ def chat():
                 break
     try:
         reply = ai.chat(messages)
+        search_match = re.search(r"\[联网搜索[:：]\s*(.+?)\]", reply)
+        if search_match and search_ai.ready:
+            search_result = search_ai.search(search_match.group(1).strip())
+            reply = ai.chat(
+                [
+                    *messages,
+                    {"role": "assistant", "content": reply},
+                    {
+                        "role": "system",
+                        "content": (
+                            "这是刚取得的联网搜索结果。基于结果回答，"
+                            "不确定的地方要明确说明，并保留重要来源链接：\n"
+                            + search_result
+                        ),
+                    },
+                ],
+                temperature=0.7,
+            )
     except IntegrationError as error:
         return json_error(str(error), 502)
+
+    assistant_metadata: dict[str, Any] = {
+        "memory_recalled": bool(memory_text)
+    }
+    thought_match = re.search(
+        r"\[内心想法\](.*?)\[/内心想法\]",
+        reply,
+        flags=re.DOTALL,
+    )
+    if thought_match:
+        assistant_metadata["inner_thought"] = thought_match.group(1).strip()[:2000]
+        reply = (
+            reply[: thought_match.start()] + reply[thought_match.end() :]
+        ).strip()
+    reminder_match = re.search(
+        r"\[设置提醒[:：]\s*([^|\]]+)\|([^\]]+)\]",
+        reply,
+    )
+    if reminder_match:
+        try:
+            remind_at = datetime.fromisoformat(
+                reminder_match.group(1).strip().replace("Z", "+00:00")
+            )
+            if remind_at.tzinfo is None:
+                remind_at = remind_at.replace(tzinfo=cfg.timezone)
+            reminder = store.create_item(
+                {
+                    "kind": "ai_reminder",
+                    "title": "AI 设置的提醒",
+                    "content": reminder_match.group(2).strip()[:2000],
+                    "happened_at": remind_at.astimezone(timezone.utc).isoformat(),
+                    "metadata": {"created_by": "ai"},
+                }
+            )
+            assistant_metadata["reminder_id"] = reminder["id"]
+            reply = (
+                reply[: reminder_match.start()] + reply[reminder_match.end() :]
+            ).strip()
+        except ValueError:
+            pass
 
     assistant_message = store.create_message(
         "assistant",
         reply,
-        metadata={"memory_recalled": bool(memory_text)},
+        metadata=assistant_metadata,
         parent_id=created[-1]["id"],
     )
 
@@ -560,6 +889,44 @@ def edit_message(message_id: str):
     if not changes:
         return json_error("没有可更新的内容")
     return jsonify(store.update_message(message_id, changes))
+
+
+@app.post("/api/messages/<message_id>/recall")
+def recall_message(message_id: str):
+    message = store.get_message(message_id)
+    if not message or message.get("status") != "active":
+        return json_error("消息不存在", 404)
+    if message.get("role") != "user":
+        return json_error("只能撤回自己发送的消息")
+    metadata = dict(message.get("metadata") or {})
+    if metadata.get("recalled"):
+        return jsonify(message)
+    metadata.update(
+        {
+            "recalled": True,
+            "recalled_at": datetime.now(timezone.utc).isoformat(),
+            "recalled_original": message.get("content") or "",
+        }
+    )
+    return jsonify(
+        store.update_message(
+            message_id,
+            {"content": "你撤回了一条消息", "metadata": metadata},
+        )
+    )
+
+
+@app.get("/api/messages/search")
+def search_messages():
+    query = str(request.args.get("q") or "").strip().lower()[:500]
+    if not query:
+        return jsonify([])
+    matches = [
+        message
+        for message in store.list_messages(limit=1000)
+        if query in str(message.get("content") or "").lower()
+    ]
+    return jsonify(matches[-100:])
 
 
 @app.delete("/api/messages/<message_id>")
@@ -886,18 +1253,89 @@ def reward_redeem():
         points = float(data.get("points") or 0)
     except (TypeError, ValueError):
         return json_error("积分格式不正确")
+    currency = str(data.get("currency") or "points")
+    if currency not in {"points", "fund"}:
+        return json_error("兑换币种无效")
     summary = reward_summary()
-    if points <= 0 or points > summary["balance"]:
-        return json_error("积分不足或兑换数量无效")
-    item = store.create_item(
+    available = (
+        summary["shopping_fund"] if currency == "fund" else summary["balance"]
+    )
+    if points <= 0 or points > available:
+        return json_error("余额不足或兑换数量无效")
+    spend = store.create_item(
         {
-            "kind": "reward_spend",
-            "title": str(data.get("title") or "娱乐兑换")[:200],
+            "kind": "shopping_fund" if currency == "fund" else "reward_spend",
+            "title": str(data.get("title") or "兑换")[:200],
             "content": str(data.get("content") or "")[:2000],
-            "value": points,
+            "value": -points if currency == "fund" else points,
+            "metadata": {"currency": currency, "action": "redeem"},
         }
     )
-    return jsonify({"item": item, "summary": reward_summary()})
+    item = store.create_item(
+        {
+            "kind": "reward_redemption",
+            "title": str(data.get("title") or "兑换项目")[:200],
+            "content": str(data.get("content") or "")[:2000],
+            "value": points,
+            "metadata": {"currency": currency, "spend_id": spend["id"]},
+        }
+    )
+    return jsonify(
+        {"item": item, "spend": spend, "summary": reward_summary()}
+    )
+
+
+@app.post("/api/rewards/draw")
+def reward_draw():
+    data = request.get_json(silent=True) or {}
+    currency = str(data.get("currency") or "points")
+    if currency not in {"points", "fund"}:
+        return json_error("抽卡币种无效")
+    summary = reward_summary()
+    available = (
+        summary["shopping_fund"] if currency == "fund" else summary["balance"]
+    )
+    draw_cost = 1
+    if available < draw_cost:
+        return json_error("余额不足，至少需要 1")
+    offers = [
+        item
+        for item in store.list_items(kind="reward_offer", limit=500)
+        if item.get("status") == "active"
+        and str((item.get("metadata") or {}).get("currency") or "points")
+        == currency
+        and float(item.get("value") or 0) > 0
+    ]
+    if not offers:
+        return json_error("请先添加这个币种的兑换物品")
+    weights = [1 / max(float(item.get("value") or 1), 1) for item in offers]
+    won = random.choices(offers, weights=weights, k=1)[0]
+    spend = store.create_item(
+        {
+            "kind": "shopping_fund" if currency == "fund" else "reward_spend",
+            "title": "抽卡",
+            "content": f"抽中了「{won.get('title') or '神秘物品'}」",
+            "value": -draw_cost if currency == "fund" else draw_cost,
+            "metadata": {"currency": currency, "action": "draw"},
+        }
+    )
+    result = store.create_item(
+        {
+            "kind": "reward_redemption",
+            "title": won.get("title") or "神秘物品",
+            "content": won.get("content") or "",
+            "value": won.get("value") or 0,
+            "metadata": {
+                "currency": currency,
+                "drawn": True,
+                "offer_id": won["id"],
+                "spend_id": spend["id"],
+            },
+        }
+    )
+    return jsonify(
+        {"item": result, "spend": spend, "summary": reward_summary()}
+    )
 
 
 @app.post("/api/rewards/settle")
@@ -905,13 +1343,13 @@ def reward_settle():
     balance = reward_summary()["balance"]
     if balance <= 0:
         return json_error("当前没有可转入购物基金的积分")
-    date_key = now_local().date().isoformat()
+    date_key = (now_local().date() - timedelta(days=1)).isoformat()
     if store.get_setting(f"reward_settled:{date_key}", False):
-        return json_error("今天已经结算过")
+        return json_error("昨日积分已经结转过")
     spend = store.create_item(
         {
             "kind": "reward_spend",
-            "title": "转入购物基金",
+            "title": "昨日未用积分结转",
             "value": balance,
             "metadata": {"date": date_key},
         }
@@ -919,7 +1357,7 @@ def reward_settle():
     fund = store.create_item(
         {
             "kind": "shopping_fund",
-            "title": "积分结转",
+            "title": "昨日积分 1:1 转入",
             "value": balance,
             "metadata": {"date": date_key},
         }
@@ -1011,7 +1449,11 @@ def daily_quote():
 def integration_status():
     return jsonify(
         {
-            "ai": {"enabled": ai.ready, "model": cfg.api_model or None},
+            "ai": {"enabled": ai.ready, "model": ai.model or None},
+            "vision": {
+                "enabled": vision_ai.ready,
+                "model": vision_ai.model or None,
+            },
             "supabase": {
                 "enabled": cfg.supabase_ready,
                 "backend": store.backend,
@@ -1020,9 +1462,11 @@ def integration_status():
             "reading": reader.status(),
             "image": {
                 "enabled": image_ai.ready,
-                "provider": cfg.image_provider or None,
-                "model": cfg.image_model or None,
+                "provider": image_ai.provider or None,
+                "model": image_ai.model or None,
             },
+            "search": {"enabled": search_ai.ready},
+            "push": {"enabled": bool(cfg.push_url)},
         }
     )
 
@@ -1409,14 +1853,60 @@ def maybe_proactive(force: bool = False) -> dict[str, Any] | None:
     message = store.create_message(
         "assistant", reply, metadata={"proactive": True}
     )
+    send_push_notification(
+        cfg.push_url,
+        cfg.push_token,
+        profile.get("ai_name") or cfg.ai_name,
+        reply,
+    )
     count = int(store.get_setting(f"proactive:{today}", 0) or 0)
     store.set_setting(f"proactive:{today}", count + 1)
     return message
 
 
+def deliver_due_reminders() -> list[dict[str, Any]]:
+    delivered = []
+    now_utc = datetime.now(timezone.utc)
+    profile = store.get_setting("profile", {}) or {}
+    ai_name = profile.get("ai_name") or cfg.ai_name
+    for item in store.list_items(kind="ai_reminder", limit=500):
+        if item.get("status") != "active" or not item.get("happened_at"):
+            continue
+        try:
+            due = datetime.fromisoformat(
+                str(item["happened_at"]).replace("Z", "+00:00")
+            )
+            if due.tzinfo is None:
+                due = due.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if due.astimezone(timezone.utc) > now_utc:
+            continue
+        message = store.create_message(
+            "assistant",
+            item.get("content") or item.get("title") or "到提醒时间了。",
+            metadata={"proactive": True, "reminder_id": item["id"]},
+        )
+        store.update_item(item["id"], {"status": "done"})
+        send_push_notification(
+            cfg.push_url,
+            cfg.push_token,
+            ai_name,
+            message["content"],
+        )
+        delivered.append(message)
+    return delivered
+
+
 @app.get("/api/events")
 def events():
-    return jsonify({"message": maybe_proactive(force=False)})
+    reminders = deliver_due_reminders()
+    return jsonify(
+        {
+            "message": reminders[0] if reminders else maybe_proactive(force=False),
+            "reminders": reminders,
+        }
+    )
 
 
 def valid_cron_request() -> bool:
@@ -1432,30 +1922,34 @@ def cron_tick():
         return json_error("无权执行定时任务", 401)
     awarded = evaluate_rewards()
     quote = daily_quote_value()
+    reminders = deliver_due_reminders()
     proactive = maybe_proactive(force=False)
     local = now_local()
     settled = None
-    if local.hour >= 22 and not store.get_setting(
-        f"reward_settled:{local.date().isoformat()}", False
+    previous_day = (local.date() - timedelta(days=1)).isoformat()
+    if local.hour < 8 and not store.get_setting(
+        f"reward_settled:{previous_day}", False
     ):
         balance = reward_summary()["balance"]
         if balance > 0:
             store.create_item(
                 {
                     "kind": "reward_spend",
-                    "title": "自动转入购物基金",
+                    "title": "昨日未用积分结转",
                     "value": balance,
+                    "metadata": {"date": previous_day},
                 }
             )
             settled = store.create_item(
                 {
                     "kind": "shopping_fund",
-                    "title": "每日积分结转",
+                    "title": "昨日积分 1:1 转入",
                     "value": balance,
+                    "metadata": {"date": previous_day},
                 }
             )
             store.set_setting(
-                f"reward_settled:{local.date().isoformat()}", True
+                f"reward_settled:{previous_day}", True
             )
     return jsonify(
         {
@@ -1463,10 +1957,19 @@ def cron_tick():
             "awarded": len(awarded),
             "quote": quote["content"],
             "proactive": bool(proactive),
+            "reminders": len(reminders),
             "settled": settled,
         }
     )
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
+    debug = os.getenv("FLASK_DEBUG", "false").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    app.run(
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "5000")),
+        debug=debug,
+        use_reloader=debug,
+    )
