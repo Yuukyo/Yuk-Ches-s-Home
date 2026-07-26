@@ -147,4 +147,3 @@ CO_READING_ACCESS_TOKEN=与MCP_AUTH_TOKEN相同
 | Render 重启后记忆/书籍消失 | 持久磁盘与挂载路径是否正确 |
 | 导入大书失败 | 文件是否超过本应用 12 MB；MCP body/import 上限是否足够 |
 | 主应用仍显示旧配置 | 修改 Render Environment 后是否重新部署/重启 |
-
