@@ -1,198 +1,312 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YUK & CHES'S HOME</title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- 引入字体图标 -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#173c2e">
+  <title>YUK &amp; CHES'S HOME</title>
+  <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="app-container">
-        
-        <!-- 1. 开屏界面 (Splash Screen) -->
-        <div id="splash-screen" class="screen active">
-            <div class="splash-top">
-                <div id="weather">晴 24°C (模拟)</div>
-                <div id="clock">00:00</div>
-                <div id="days-count">Since 2024.9.1 我们已经一起走过了 0 天</div>
-            </div>
-            <div class="splash-bottom">
-                <div id="ai-quote">“在木质的幽香与常春藤的绿意中，我在这里等你。”</div>
-                <div class="swipe-hint"><i class="fas fa-chevron-up"></i><br>上滑进入</div>
-            </div>
+  <div id="auth-overlay" class="gate hidden" aria-hidden="true">
+    <form id="login-form" class="gate-card">
+      <p class="eyebrow">PRIVATE HOME</p>
+      <h1>欢迎回家</h1>
+      <p>请输入家庭访问密码。</p>
+      <label class="field">
+        <span>访问密码</span>
+        <input id="login-password" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="primary-btn" type="submit">开门</button>
+      <p id="login-error" class="form-error" role="alert"></p>
+    </form>
+  </div>
+
+  <main id="app" class="phone-shell">
+    <section id="splash-screen" class="splash">
+      <div class="canopy canopy-one"></div>
+      <div class="canopy canopy-two"></div>
+      <div class="splash-copy">
+        <p id="weather-label" class="weather-label">正在听窗外的天气…</p>
+        <time id="clock" class="clock">00:00</time>
+        <p id="days-label" class="days-label">Since 2024.9.1</p>
+      </div>
+      <div class="splash-bottom">
+        <blockquote id="daily-quote">书页间藏着时光，而我在这里等你。</blockquote>
+        <button id="enter-home" class="enter-home" type="button">
+          <span aria-hidden="true">⌃</span>
+          上滑或轻触回家
+        </button>
+      </div>
+    </section>
+
+    <div id="home-shell" class="home-shell hidden">
+      <div id="drawer-scrim" class="drawer-scrim hidden"></div>
+      <aside id="drawer" class="drawer" aria-label="功能导航">
+        <div class="drawer-brand">
+          <span class="brand-mark">Y·C</span>
+          <div>
+            <strong>我们的家</strong>
+            <small>木质图书馆</small>
+          </div>
         </div>
-
-        <!-- 2. 聊天主界面 (Chat Screen) -->
-        <div id="chat-screen" class="screen hidden">
-            <div class="header wooden-header">
-                <button class="icon-btn" onclick="navigateTo('timeline-screen')"><i class="fas fa-chevron-left"></i></button>
-                <div class="title" onclick="navigateTo('settings-screen')">余天骋<br><span>改自适应中...</span></div>
-                <button class="icon-btn" onclick="navigateTo('settings-screen')"><i class="fas fa-ellipsis-h"></i></button>
-            </div>
-            
-            <div class="chat-container" id="chat-container">
-                <div class="message ai-message">
-                    <div class="bubble">欢迎回到我们的专属图书馆。</div>
-                </div>
-                <div class="message user-message">
-                    <div class="bubble">我叫什么?友情提示，三个字。</div>
-                </div>
-                <div class="message ai-message">
-                    <div class="bubble">你叫断云去。</div>
-                </div>
-            </div>
-
-            <!-- 输入区 -->
-            <div class="input-area">
-                <button class="icon-btn plus-btn" onclick="toggleMenu('plus-menu')"><i class="fas fa-plus"></i></button>
-                <input type="text" placeholder="输入文字..." id="message-input">
-                <button class="icon-btn emoji-btn"><i class="far fa-smile"></i></button>
-                <button class="send-btn" onclick="sendMessage()">发送</button>
-            </div>
-
-            <!-- +号弹出菜单 -->
-            <div class="popup-menu hidden" id="plus-menu">
-                <div class="menu-grid">
-                    <div class="menu-item"><i class="fas fa-redo"></i>重回</div>
-                    <div class="menu-item"><i class="fas fa-images"></i>相册</div>
-                    <div class="menu-item"><i class="fas fa-expand"></i>识图</div>
-                    <div class="menu-item"><i class="fas fa-microphone"></i>语音</div>
-                    <div class="menu-item"><i class="fas fa-file-invoice-dollar"></i>转账</div>
-                    <div class="menu-item"><i class="fas fa-gift"></i>礼物</div>
-                    <div class="menu-item"><i class="fas fa-book-open"></i>剧情</div>
-                    <div class="menu-item"><i class="fas fa-book"></i>日记</div>
-                </div>
-            </div>
+        <nav>
+          <button data-screen="chat-screen" class="nav-link active"><span>⌂</span>聊天</button>
+          <button data-screen="records-screen" class="nav-link"><span>◷</span>记录</button>
+          <button data-screen="ledger-screen" class="nav-link"><span>◫</span>记账与计划</button>
+          <button data-screen="rewards-screen" class="nav-link"><span>✦</span>积分商城</button>
+          <button data-screen="reading-screen" class="nav-link"><span>▤</span>共读</button>
+          <button data-screen="gallery-screen" class="nav-link"><span>▧</span>收藏与创作</button>
+          <button data-screen="blackroom-screen" class="nav-link"><span>☾</span>AI 的小黑屋</button>
+          <button data-screen="settings-screen" class="nav-link"><span>⚙</span>设定</button>
+        </nav>
+        <div class="drawer-foot">
+          <span id="connection-dot" class="status-dot"></span>
+          <span id="connection-copy">正在连接家里的服务</span>
         </div>
+      </aside>
 
-        <!-- 3. 记录时间轴界面 (Timeline Screen) -->
-        <div id="timeline-screen" class="screen hidden bg-dark">
-            <div class="header dark-header">
-                <button class="icon-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-                <button class="icon-btn"><i class="fas fa-cog"></i></button>
-                <div class="title">🐱 MiGi (替换图标)</div>
-                <button class="icon-btn"><i class="fas fa-ellipsis-h"></i></button>
-                <button class="icon-btn"><i class="fas fa-plus"></i></button>
-            </div>
-            
-            <div class="timeline-container">
-                <div class="timeline-header"><i class="fas fa-list-ul"></i> 清单</div>
-                
-                <div class="timeline-item">
-                    <div class="timeline-dot dot-blue"></div>
-                    <div class="timeline-time">2026/07/09 08:18:29</div>
-                    <div class="timeline-content">
-                        <label class="checkbox-label"><input type="checkbox"> 贴工服通知</label>
-                        <label class="checkbox-label"><input type="checkbox"> 帮磁路李兴在二楼录指纹</label>
-                    </div>
-                </div>
-                
-                <div class="timeline-item">
-                    <div class="timeline-dot dot-blue"></div>
-                    <div class="timeline-time">2026/07/08 17:26:31</div>
-                    <div class="timeline-content">
-                        <label class="checkbox-label"><input type="checkbox"> 贴工服通知</label>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 底部导航 -->
-            <div class="bottom-nav">
-                <div class="nav-item">T 便签</div>
-                <div class="nav-item active"><i class="fas fa-list-ul"></i> 清单</div>
-                <div class="nav-item"><i class="fas fa-heartbeat"></i> 心情</div>
-                <div class="nav-item"><i class="fas fa-image"></i> 图片</div>
-            </div>
+      <section id="chat-screen" class="screen active">
+        <header class="topbar paper-topbar">
+          <button class="icon-button" data-screen="records-screen" aria-label="打开记录">‹</button>
+          <button id="profile-trigger" class="chat-title" type="button">
+            <strong id="chat-ai-name">余天骋</strong>
+            <small>点按修改设定 · 长按去小黑屋</small>
+          </button>
+          <button class="icon-button" data-screen="settings-screen" aria-label="聊天设定">•••</button>
+        </header>
+        <div id="message-list" class="message-list" aria-live="polite"></div>
+        <div id="queued-list" class="queued-list hidden"></div>
+        <div id="reply-preview" class="reply-preview hidden">
+          <div><small>正在引用</small><p id="reply-preview-text"></p></div>
+          <button id="clear-reply" class="bare-button" type="button">×</button>
         </div>
+        <div id="attachment-preview" class="attachment-preview hidden"></div>
+        <footer class="composer">
+          <button id="plus-button" class="composer-icon" type="button" aria-label="更多功能">＋</button>
+          <textarea id="message-input" rows="1" maxlength="12000" placeholder="写下想说的话…"></textarea>
+          <button id="sticker-button" class="composer-icon" type="button" aria-label="表情包">☺</button>
+          <button id="queue-button" class="queue-button" type="button" title="加入连续消息">＋1</button>
+          <button id="send-button" class="send-button" type="button">发送</button>
+        </footer>
+      </section>
 
-        <!-- 侧边栏 (Sidebar) -->
-        <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="toggleSidebar()"></div>
-        <div class="sidebar hidden" id="sidebar">
-            <div class="sidebar-tabs">
-                <div class="s-tab active">类型</div>
-                <div class="s-tab">日历</div>
-                <div class="s-tab">标签</div>
-            </div>
-            <div class="sidebar-list">
-                <div class="s-item"><i class="far fa-sticky-note"></i> 所有记事</div>
-                <div class="s-item"><i class="fas fa-font"></i> T 便签</div>
-                <div class="s-item"><i class="fas fa-book"></i> 笔记</div>
-                <div class="s-item active"><i class="fas fa-list-ul"></i> 清单</div>
-                <div class="s-item sub"><i class="far fa-square"></i> 未完成</div>
-                <div class="s-item sub"><i class="far fa-check-square"></i> 已完成</div>
-                <div class="s-item" onclick="navigateTo('ledger-screen'); toggleSidebar();"><i class="fas fa-wallet"></i> 记账 (点击演示)</div>
-                <div class="s-item"><i class="fas fa-heartbeat"></i> 心情</div>
-                <div class="s-item"><i class="fas fa-image"></i> 图片</div>
-            </div>
+      <section id="records-screen" class="screen dark-screen">
+        <header class="topbar dark-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title">
+            <strong>生活记录</strong>
+            <small>时间轴</small>
+          </div>
+          <button id="new-record-button" class="icon-button" aria-label="新建记录">＋</button>
+        </header>
+        <div class="filter-strip" id="record-filters">
+          <button class="filter-chip active" data-kind="">全部</button>
+          <button class="filter-chip" data-kind="note">便签</button>
+          <button class="filter-chip" data-kind="task">清单</button>
+          <button class="filter-chip" data-kind="habit">习惯</button>
+          <button class="filter-chip" data-kind="mood">心情</button>
+          <button class="filter-chip" data-kind="attachment">附件</button>
         </div>
+        <div id="timeline-list" class="timeline-list"></div>
+      </section>
 
-        <!-- 4. 记账界面 (Ledger Screen) -->
-        <div id="ledger-screen" class="screen hidden bg-dark">
-            <div class="header dark-header">
-                <button class="icon-btn" onclick="navigateTo('timeline-screen')"><i class="fas fa-chevron-left"></i></button>
-                <div class="title">账本</div>
-                <button class="icon-btn"><i class="fas fa-ellipsis-h"></i></button>
-            </div>
-            <div class="ledger-summary">
-                <div class="month-selector">2026年7月 <i class="fas fa-chevron-down"></i></div>
-                <div class="total-expense">总支出 ⇌<br><span>¥2,482.60</span></div>
-                <div class="total-income">总收入 ¥4,565.00 月结余 ¥2,082.40</div>
-            </div>
-            <div class="ledger-list">
-                <div class="ledger-day">
-                    <div class="day-head">07/26 星期日 <span>支出: ¥75.60</span></div>
-                    <div class="ledger-item">
-                        <div class="l-icon bg-red"><i class="fas fa-gamepad"></i></div>
-                        <div class="l-info">
-                            <div class="l-title">娱乐-邮费</div>
-                            <div class="l-time">11:00</div>
-                        </div>
-                        <div class="l-amount amount-out">-¥75.60<br><span>微信</span></div>
-                    </div>
-                </div>
-            </div>
-            <div class="bottom-nav">
-                <div class="nav-item active"><i class="fas fa-book"></i> 账本</div>
-                <div class="nav-item"><i class="fas fa-layer-group"></i> 资产</div>
-                <div class="nav-item"><i class="fas fa-chart-bar"></i> 统计</div>
-            </div>
+      <section id="ledger-screen" class="screen dark-screen">
+        <header class="topbar dark-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title"><strong>账本</strong><small>资产 · 统计 · 计划</small></div>
+          <button id="new-transaction-button" class="icon-button" aria-label="记一笔">＋</button>
+        </header>
+        <div class="tabbar" id="ledger-tabs">
+          <button class="tab active" data-ledger-tab="ledger">明细</button>
+          <button class="tab" data-ledger-tab="assets">资产</button>
+          <button class="tab" data-ledger-tab="stats">统计</button>
+          <button class="tab" data-ledger-tab="plans">计划</button>
         </div>
+        <div id="ledger-content" class="scroll-content"></div>
+      </section>
 
-        <!-- 5. 设定界面 (Settings Screen) -->
-        <div id="settings-screen" class="screen hidden bg-paper">
-            <div class="header wooden-header">
-                <button class="icon-btn" onclick="navigateTo('chat-screen')"><i class="fas fa-chevron-left"></i></button>
-                <div class="title">聊天信息</div>
-            </div>
-            <div class="settings-content">
-                <div class="profile-section">
-                    <div class="avatar-box">余</div>
-                    <div class="avatar-add"><i class="fas fa-plus"></i></div>
-                </div>
-                <div class="settings-list">
-                    <div class="set-item"><span>查找聊天记录</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="set-item">
-                        <div>某人设定<br><span class="sub-text">角色卡、状态、说话习惯</span></div>
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                    <div class="set-item">
-                        <div>世界书<br><span class="sub-text">规则、关系、世界结构</span></div>
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                    <div class="set-item">
-                        <div>过往记忆<br><span class="sub-text">搬家前聊天、小剧场、旧记录</span></div>
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                    <div class="set-item"><span>记忆系统</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="set-item"><span>缓存命中</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="set-item"><span>收藏消息</span><i class="fas fa-chevron-right"></i></div>
-                </div>
-            </div>
+      <section id="rewards-screen" class="screen forest-screen">
+        <header class="topbar transparent-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title"><strong>积分兑换所</strong><small>认真生活会留下星光</small></div>
+          <button id="evaluate-rewards" class="icon-button" aria-label="结算积分">↻</button>
+        </header>
+        <div class="reward-hero">
+          <p>可用积分</p>
+          <strong id="reward-balance">0</strong>
+          <div>
+            <span>累计获得 <b id="reward-earned">0</b></span>
+            <span>购物基金 <b id="shopping-fund">0</b></span>
+          </div>
         </div>
+        <div class="scroll-content padded">
+          <div class="section-heading">
+            <div><small>TONIGHT</small><h2>今天想兑换什么？</h2></div>
+            <button id="new-reward-button" class="text-button">添加项目</button>
+          </div>
+          <div id="reward-shop" class="card-grid"></div>
+          <button id="settle-rewards" class="secondary-btn full-width" type="button">把剩余积分转入购物基金</button>
+        </div>
+      </section>
 
+      <section id="reading-screen" class="screen paper-screen">
+        <header class="topbar paper-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title"><strong>共读室</strong><small>co-reading-mcp</small></div>
+          <button id="import-book-button" class="icon-button" aria-label="导入书籍">＋</button>
+        </header>
+        <div class="reading-layout">
+          <aside class="book-rail">
+            <div class="search-row">
+              <input id="reading-search" type="search" placeholder="搜索书中段落">
+              <button id="reading-search-button" class="compact-btn">搜索</button>
+            </div>
+            <div id="book-list" class="book-list"></div>
+          </aside>
+          <article id="reading-pane" class="reading-pane">
+            <div class="empty-state">
+              <span>▤</span>
+              <h2>挑一本书，一起读下去</h2>
+              <p>进度、批注和共同停留的段落都会保存在 co-reading-mcp 中。</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="gallery-screen" class="screen paper-screen">
+        <header class="topbar paper-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title"><strong>收藏与创作</strong><small>喜欢的消息、图片、小剧场</small></div>
+          <button id="new-scene-button" class="icon-button" aria-label="添加小剧场">＋</button>
+        </header>
+        <div class="tabbar light-tabs" id="gallery-tabs">
+          <button class="tab active" data-gallery-tab="favorites">收藏</button>
+          <button class="tab" data-gallery-tab="images">NAI 生图</button>
+          <button class="tab" data-gallery-tab="scenes">小剧场</button>
+        </div>
+        <div id="gallery-content" class="scroll-content padded"></div>
+      </section>
+
+      <section id="blackroom-screen" class="screen blackroom-screen">
+        <header class="topbar transparent-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title"><strong>AI 的小黑屋</strong><small>你只有阅读权限</small></div>
+          <span class="read-only-badge">READ ONLY</span>
+        </header>
+        <div class="blackroom-grid scroll-content padded">
+          <section class="blackroom-card"><h2>他的收藏夹</h2><div id="ai-favorites"></div></section>
+          <section class="blackroom-card"><h2>备忘录</h2><div id="ai-memos"></div></section>
+          <section class="blackroom-card"><h2>钱包</h2><div id="ai-wallet"></div></section>
+          <section class="blackroom-card grave-card"><h2>坟场</h2><p>被删除和重回的话留在这里，偶尔可以被他重新看见与批注。</p><div id="graveyard"></div></section>
+        </div>
+      </section>
+
+      <section id="settings-screen" class="screen paper-screen">
+        <header class="topbar paper-topbar">
+          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
+          <div class="section-title"><strong>聊天信息</strong><small>设定与连接</small></div>
+          <button id="logout-button" class="text-button">离开</button>
+        </header>
+        <div class="scroll-content settings-content">
+          <form id="profile-form" class="settings-card">
+            <div class="settings-card-head"><span>01</span><div><h2>我们是谁</h2><p>Prompt、角色设定与世界书</p></div></div>
+            <div class="two-column">
+              <label class="field"><span>你的名字</span><input id="setting-user-name" name="user_name"></label>
+              <label class="field"><span>AI 的名字</span><input id="setting-ai-name" name="ai_name"></label>
+            </div>
+            <label class="field"><span>角色 Prompt</span><textarea id="setting-character-prompt" name="character_prompt" rows="5"></textarea></label>
+            <label class="field"><span>关系与当前状态</span><textarea id="setting-relationship" name="relationship" rows="3"></textarea></label>
+            <label class="field"><span>世界书</span><textarea id="setting-worldbook" name="worldbook" rows="7"></textarea></label>
+            <label class="switch-row"><span><b>允许主动消息</b><small>需同时配置定时任务</small></span><input id="setting-proactive" type="checkbox" name="proactive_enabled"><i></i></label>
+            <button class="primary-btn" type="submit">保存我们的设定</button>
+          </form>
+
+          <section class="settings-card" id="memory-settings">
+            <div class="settings-card-head"><span>02</span><div><h2>记忆系统</h2><p>Ombre Brain 就住在这里</p></div></div>
+            <div id="memory-status" class="integration-status">正在检查…</div>
+            <div class="inline-form">
+              <input id="memory-query" placeholder="想让他回忆什么？">
+              <button id="memory-search-button" class="compact-btn">寻找</button>
+            </div>
+            <pre id="memory-result" class="result-box hidden"></pre>
+            <details>
+              <summary>手动留下一段记忆</summary>
+              <textarea id="memory-content" rows="4" placeholder="这段内容会通过 hold / grow 写入 Ombre Brain"></textarea>
+              <button id="memory-save-button" class="secondary-btn">写入记忆</button>
+            </details>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-head"><span>03</span><div><h2>API 与服务</h2><p>密钥只保存在 Render 服务端环境变量</p></div></div>
+            <div id="integration-list" class="integration-list"></div>
+            <p class="security-note">为避免 API Key 泄露，网页只显示连接状态，不会读取或返回密钥。</p>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-head"><span>04</span><div><h2>聊天记录搬家</h2><p>兼容 wq70/OVO 官方导出 JSON</p></div></div>
+            <label class="file-drop">
+              <input id="ovo-import-file" type="file" accept=".json,application/json">
+              <span>选择或拖入 OVO 聊天记录</span>
+              <small id="ovo-file-name">尚未选择文件</small>
+            </label>
+            <div class="button-row">
+              <button id="ovo-import-append" class="primary-btn" type="button">追加导入</button>
+              <button id="ovo-import-replace" class="danger-btn" type="button">替换现有聊天</button>
+            </div>
+            <button id="export-chat-button" class="secondary-btn full-width" type="button">导出当前聊天备份</button>
+          </section>
+        </div>
+      </section>
     </div>
-    <script src="js/app.js"></script>
+  </main>
+
+  <div id="plus-sheet" class="sheet hidden" aria-hidden="true">
+    <button class="sheet-scrim" data-close-sheet aria-label="关闭"></button>
+    <section class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <h2>和他一起做点什么</h2>
+      <div class="action-grid">
+        <button data-plus-action="reroll"><span>↻</span>重回</button>
+        <button data-plus-action="vision"><span>◉</span>识图</button>
+        <button data-plus-action="file"><span>⇧</span>文件</button>
+        <button data-plus-action="music"><span>♫</span>音乐</button>
+        <button data-screen="reading-screen"><span>▤</span>阅读</button>
+        <button data-plus-action="record"><span>✎</span>记录</button>
+        <button data-screen="gallery-screen"><span>✦</span>创作</button>
+        <button data-plus-action="thought"><span>☁</span>内心想法</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="message-menu" class="sheet hidden" aria-hidden="true">
+    <button class="sheet-scrim" data-close-sheet aria-label="关闭"></button>
+    <section class="sheet-panel compact-sheet">
+      <div class="sheet-handle"></div>
+      <div class="message-actions">
+        <button data-message-action="edit">编辑</button>
+        <button data-message-action="quote">引用</button>
+        <button data-message-action="favorite">收藏</button>
+        <button data-message-action="delete">删除</button>
+        <button data-message-action="forward">生成聊天图片</button>
+        <button data-message-action="reroll">重回</button>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="form-dialog" class="modal">
+    <form method="dialog" id="dialog-form">
+      <header><div><small id="dialog-kicker">NEW</small><h2 id="dialog-title">新建</h2></div><button type="button" data-dialog-close aria-label="关闭">×</button></header>
+      <div id="dialog-fields"></div>
+      <p id="dialog-error" class="form-error"></p>
+      <footer><button type="button" data-dialog-close class="secondary-btn">取消</button><button id="dialog-submit" type="submit" class="primary-btn">保存</button></footer>
+    </form>
+  </dialog>
+
+  <input id="attachment-file-input" class="hidden" type="file" multiple>
+  <input id="book-file-input" class="hidden" type="file" accept=".epub,.txt,.md,.markdown">
+  <canvas id="share-canvas" class="hidden"></canvas>
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <script src="/static/js/app.js" defer></script>
 </body>
 </html>
