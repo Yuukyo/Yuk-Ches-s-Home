@@ -127,6 +127,88 @@ class AIClient:
         return min(max(int(match.group()) if match else 5, 1), 50)
 
 
+class SearchClient:
+    """Small adapter for Tavily and compatible JSON search endpoints."""
+
+    def __init__(self, url: str = "", key: str = "") -> None:
+        self.url = url.rstrip("/")
+        self.key = key
+
+    @property
+    def ready(self) -> bool:
+        return bool(self.url and self.key)
+
+    def search(self, query: str, limit: int = 5) -> str:
+        if not self.ready:
+            raise IntegrationError("联网搜索尚未配置")
+        body: dict[str, Any] = {
+            "query": query[:500],
+            "max_results": min(max(limit, 1), 10),
+        }
+        headers = {"Content-Type": "application/json"}
+        if "tavily.com" in self.url:
+            body["api_key"] = self.key
+            body["search_depth"] = "basic"
+        else:
+            headers["Authorization"] = f"Bearer {self.key}"
+        try:
+            response = requests.post(
+                self.url,
+                json=body,
+                headers=headers,
+                timeout=(10, 45),
+            )
+        except requests.RequestException as error:
+            raise IntegrationError("无法连接联网搜索服务") from error
+        if not response.ok:
+            raise IntegrationError(f"联网搜索返回 {response.status_code}")
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise IntegrationError("联网搜索返回格式无法识别") from error
+        results = payload.get("results") or payload.get("data") or []
+        lines = []
+        for item in results[:limit]:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or item.get("name") or "搜索结果")
+            content = str(
+                item.get("content")
+                or item.get("snippet")
+                or item.get("description")
+                or ""
+            )
+            url = str(item.get("url") or item.get("link") or "")
+            lines.append(f"- {title}\n  {content[:1200]}\n  {url}")
+        if payload.get("answer"):
+            lines.insert(0, str(payload["answer"])[:2000])
+        return "\n".join(lines).strip() or "没有找到可靠结果。"
+
+
+def send_push_notification(
+    url: str,
+    token: str,
+    title: str,
+    message: str,
+) -> bool:
+    """Send a best-effort generic JSON webhook."""
+    if not url:
+        return False
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        response = requests.post(
+            url,
+            headers=headers,
+            json={"title": title[:120], "message": message[:2000]},
+            timeout=(5, 20),
+        )
+        return response.ok
+    except requests.RequestException:
+        return False
+
+
 class MCPClient:
     """Minimal Streamable HTTP MCP client with graceful fallback."""
 
