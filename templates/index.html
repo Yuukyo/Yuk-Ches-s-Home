@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#173c2e">
+  <meta name="theme-color" content="#f4f5f4">
   <title>YUK &amp; CHES'S HOME</title>
+  <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -29,37 +30,54 @@
       <div class="splash-copy">
         <p id="weather-label" class="weather-label">正在听窗外的天气…</p>
         <time id="clock" class="clock">00:00</time>
-        <p id="days-label" class="days-label">Since 2024.9.1</p>
+        <p id="days-label" class="days-label">我们已经一起走过了 0 天</p>
+        <blockquote id="daily-quote">书页间藏着时光，而我在这里等你。</blockquote>
       </div>
       <div class="splash-bottom">
-        <blockquote id="daily-quote">书页间藏着时光，而我在这里等你。</blockquote>
         <button id="enter-home" class="enter-home" type="button">
-          <span aria-hidden="true">⌃</span>
-          上滑或轻触回家
+          <span class="pixel-heart" aria-hidden="true">♥</span>
+          <small>轻触回家</small>
         </button>
       </div>
     </section>
 
     <div id="home-shell" class="home-shell hidden">
       <div id="drawer-scrim" class="drawer-scrim hidden"></div>
-      <aside id="drawer" class="drawer" aria-label="功能导航">
+      <aside id="drawer" class="drawer" aria-label="记录导航">
         <div class="drawer-brand">
-          <span class="brand-mark">Y·C</span>
+          <span class="brand-mark">Y</span>
           <div>
-            <strong>我们的家</strong>
-            <small>木质图书馆</small>
+            <strong id="drawer-record-title">YUK</strong>
+            <small>生活记录</small>
           </div>
         </div>
-        <nav>
-          <button data-screen="chat-screen" class="nav-link active"><span>⌂</span>聊天</button>
-          <button data-screen="records-screen" class="nav-link"><span>◷</span>记录</button>
-          <button data-screen="ledger-screen" class="nav-link"><span>◫</span>记账与计划</button>
-          <button data-screen="rewards-screen" class="nav-link"><span>✦</span>积分商城</button>
-          <button data-screen="reading-screen" class="nav-link"><span>▤</span>共读</button>
-          <button data-screen="gallery-screen" class="nav-link"><span>▧</span>收藏与创作</button>
-          <button data-screen="blackroom-screen" class="nav-link"><span>☾</span>AI 的小黑屋</button>
-          <button data-screen="settings-screen" class="nav-link"><span>⚙</span>设定</button>
-        </nav>
+        <div id="drawer-tabs" class="drawer-tabs">
+          <button class="active" data-drawer-tab="type">类型</button>
+          <button data-drawer-tab="calendar">日历</button>
+          <button data-drawer-tab="tags">标签</button>
+          <button data-drawer-tab="points">积分</button>
+        </div>
+        <div id="drawer-type" class="drawer-panel active">
+          <button data-record-kind="note"><span>▤</span>便签</button>
+          <button data-record-kind="task"><span>☑</span>清单</button>
+          <button data-record-kind="habit"><span>◉</span>习惯</button>
+          <button data-record-kind="mood"><span>☺</span>心情</button>
+          <button data-record-kind="schedule"><span>◷</span>日程</button>
+          <button data-record-kind="period"><span>○</span>经期</button>
+          <button data-screen="ledger-screen"><span>¥</span>记账</button>
+          <button data-screen="reading-screen"><span>▥</span>共读</button>
+        </div>
+        <div id="drawer-calendar" class="drawer-panel"></div>
+        <div id="drawer-tags" class="drawer-panel"></div>
+        <div id="drawer-points" class="drawer-panel">
+          <div class="drawer-balance">
+            <div><small>今日积分</small><b id="drawer-points-balance">0</b></div>
+            <div><small>购物基金</small><b id="drawer-fund-balance">0</b></div>
+          </div>
+          <button data-screen="rewards-screen" data-reward-tab="exchange"><span>♢</span>兑换</button>
+          <button data-screen="rewards-screen" data-reward-tab="ledger"><span>≡</span>记录</button>
+          <button data-screen="rewards-screen" data-reward-tab="draw"><span>✦</span>抽卡</button>
+        </div>
         <div class="drawer-foot">
           <span id="connection-dot" class="status-dot"></span>
           <span id="connection-copy">正在连接家里的服务</span>
@@ -71,10 +89,14 @@
           <button class="icon-button" data-screen="records-screen" aria-label="打开记录">‹</button>
           <button id="profile-trigger" class="chat-title" type="button">
             <strong id="chat-ai-name">余天骋</strong>
-            <small>点按修改设定 · 长按去小黑屋</small>
           </button>
-          <button class="icon-button" data-screen="settings-screen" aria-label="聊天设定">•••</button>
+          <button id="chat-more-button" class="icon-button" aria-label="更多聊天功能">•••</button>
         </header>
+        <div id="selection-bar" class="selection-bar hidden">
+          <button id="selection-cancel" type="button">取消</button>
+          <b id="selection-count">已选 0 条</b>
+          <button id="selection-confirm" type="button">完成</button>
+        </div>
         <div id="message-list" class="message-list" aria-live="polite"></div>
         <div id="queued-list" class="queued-list hidden"></div>
         <div id="reply-preview" class="reply-preview hidden">
@@ -86,7 +108,6 @@
           <button id="plus-button" class="composer-icon" type="button" aria-label="更多功能">＋</button>
           <textarea id="message-input" rows="1" maxlength="12000" placeholder="写下想说的话…"></textarea>
           <button id="sticker-button" class="composer-icon" type="button" aria-label="表情包">☺</button>
-          <button id="queue-button" class="queue-button" type="button" title="加入连续消息">＋1</button>
           <button id="send-button" class="send-button" type="button">发送</button>
         </footer>
       </section>
@@ -94,20 +115,14 @@
       <section id="records-screen" class="screen dark-screen">
         <header class="topbar dark-topbar">
           <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
-          <div class="section-title">
-            <strong>生活记录</strong>
-            <small>时间轴</small>
+          <button id="record-title-button" class="section-title editable-title">
+            <strong id="record-title">YUK</strong>
+          </button>
+          <div class="record-head-actions">
+            <button id="new-record-button" class="icon-button" aria-label="新建记录">＋</button>
+            <button class="icon-button pixel-heart-button" data-screen="chat-screen" aria-label="回到聊天">♥</button>
           </div>
-          <button id="new-record-button" class="icon-button" aria-label="新建记录">＋</button>
         </header>
-        <div class="filter-strip" id="record-filters">
-          <button class="filter-chip active" data-kind="">全部</button>
-          <button class="filter-chip" data-kind="note">便签</button>
-          <button class="filter-chip" data-kind="task">清单</button>
-          <button class="filter-chip" data-kind="habit">习惯</button>
-          <button class="filter-chip" data-kind="mood">心情</button>
-          <button class="filter-chip" data-kind="attachment">附件</button>
-        </div>
         <div id="timeline-list" class="timeline-list"></div>
       </section>
 
@@ -133,20 +148,35 @@
           <button id="evaluate-rewards" class="icon-button" aria-label="结算积分">↻</button>
         </header>
         <div class="reward-hero">
-          <p>可用积分</p>
+          <p>今日可用积分</p>
           <strong id="reward-balance">0</strong>
           <div>
             <span>累计获得 <b id="reward-earned">0</b></span>
             <span>购物基金 <b id="shopping-fund">0</b></span>
           </div>
         </div>
+        <div id="reward-tabs" class="tabbar light-tabs">
+          <button class="tab active" data-reward-tab="exchange">兑换</button>
+          <button class="tab" data-reward-tab="ledger">记录</button>
+          <button class="tab" data-reward-tab="draw">抽卡</button>
+        </div>
         <div class="scroll-content padded">
+          <section id="reward-exchange-panel">
           <div class="section-heading">
             <div><small>TONIGHT</small><h2>今天想兑换什么？</h2></div>
             <button id="new-reward-button" class="text-button">添加项目</button>
           </div>
           <div id="reward-shop" class="card-grid"></div>
-          <button id="settle-rewards" class="secondary-btn full-width" type="button">把剩余积分转入购物基金</button>
+          </section>
+          <section id="reward-ledger-panel" class="hidden"><div id="reward-ledger"></div></section>
+          <section id="reward-draw-panel" class="hidden draw-panel">
+            <div class="draw-card"><span>✦</span><h2>抽一张生活奖励</h2><p>高价值物品出现概率更低，每次消耗 1 点所选余额。</p></div>
+            <div class="button-row">
+              <button id="draw-points-button" class="primary-btn">用积分抽卡</button>
+              <button id="draw-fund-button" class="secondary-btn">用基金抽卡</button>
+            </div>
+            <div id="draw-result"></div>
+          </section>
         </div>
       </section>
 
@@ -190,12 +220,11 @@
 
       <section id="blackroom-screen" class="screen blackroom-screen">
         <header class="topbar transparent-topbar">
-          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
-          <div class="section-title"><strong>AI 的小黑屋</strong><small>你只有阅读权限</small></div>
+          <button class="icon-button" data-screen="chat-screen" aria-label="返回聊天">‹</button>
+          <button id="blackroom-title" class="section-title editable-title"><strong>AI 的小黑屋</strong></button>
           <span class="read-only-badge">READ ONLY</span>
         </header>
         <div class="blackroom-grid scroll-content padded">
-          <section class="blackroom-card"><h2>他的收藏夹</h2><div id="ai-favorites"></div></section>
           <section class="blackroom-card"><h2>备忘录</h2><div id="ai-memos"></div></section>
           <section class="blackroom-card"><h2>钱包</h2><div id="ai-wallet"></div></section>
           <section class="blackroom-card grave-card"><h2>坟场</h2><p>被删除和重回的话留在这里，偶尔可以被他重新看见与批注。</p><div id="graveyard"></div></section>
@@ -204,22 +233,73 @@
 
       <section id="settings-screen" class="screen paper-screen">
         <header class="topbar paper-topbar">
-          <button class="icon-button drawer-button" aria-label="打开导航">☰</button>
-          <div class="section-title"><strong>聊天信息</strong><small>设定与连接</small></div>
-          <button id="logout-button" class="text-button">离开</button>
+          <button class="icon-button" data-screen="chat-screen" aria-label="返回聊天">‹</button>
+          <div class="section-title"><strong id="profile-ai-name">AI</strong><small id="profile-ai-remark">我们的小家</small></div>
+          <span class="topbar-spacer"></span>
         </header>
         <div class="scroll-content settings-content">
+          <section class="profile-summary settings-card">
+            <div><strong id="profile-message-count">0</strong><small>消息</small></div>
+            <div><strong id="profile-token-count">0</strong><small>约合 Token</small></div>
+            <div><strong id="profile-recent-chat">—</strong><small>最近聊天</small></div>
+          </section>
           <form id="profile-form" class="settings-card">
-            <div class="settings-card-head"><span>01</span><div><h2>我们是谁</h2><p>Prompt、角色设定与世界书</p></div></div>
+            <div class="settings-card-head"><span>01</span><div><h2>角色档案</h2><p>分别保存 AI 与你的设定</p></div></div>
             <div class="two-column">
-              <label class="field"><span>你的名字</span><input id="setting-user-name" name="user_name"></label>
               <label class="field"><span>AI 的名字</span><input id="setting-ai-name" name="ai_name"></label>
+              <label class="field"><span>备注名</span><input id="setting-ai-remark" name="ai_remark"></label>
             </div>
-            <label class="field"><span>角色 Prompt</span><textarea id="setting-character-prompt" name="character_prompt" rows="5"></textarea></label>
+            <label class="field"><span>AI 角色 Prompt</span><textarea id="setting-character-prompt" name="character_prompt" rows="5"></textarea></label>
+            <label class="field"><span>你的名字</span><input id="setting-user-name" name="user_name"></label>
+            <label class="field"><span>你的角色 Prompt</span><textarea id="setting-user-prompt" name="user_prompt" rows="4"></textarea></label>
             <label class="field"><span>关系与当前状态</span><textarea id="setting-relationship" name="relationship" rows="3"></textarea></label>
-            <label class="field"><span>世界书</span><textarea id="setting-worldbook" name="worldbook" rows="7"></textarea></label>
-            <label class="switch-row"><span><b>允许主动消息</b><small>需同时配置定时任务</small></span><input id="setting-proactive" type="checkbox" name="proactive_enabled"><i></i></label>
+            <label class="switch-row"><span><b>允许主动联系</b><small>AI 可根据近期聊天主动问候，并推送提醒</small></span><input id="setting-proactive" type="checkbox" name="proactive_enabled"><i></i></label>
             <button class="primary-btn" type="submit">保存我们的设定</button>
+          </form>
+
+          <section class="settings-card">
+            <div class="settings-card-head"><span>02</span><div><h2>世界书</h2><p>按位置、关键词和权重注入聊天</p></div></div>
+            <div id="worldbook-list" class="worldbook-list"></div>
+            <button id="new-worldbook-button" class="secondary-btn full-width" type="button">＋ 新建世界书条目</button>
+          </section>
+
+          <section class="settings-card profile-links">
+            <button type="button" data-screen="api-settings-screen"><span>记忆、API 与聊天记录搬家</span><b>›</b></button>
+          </section>
+        </div>
+      </section>
+
+      <section id="api-settings-screen" class="screen paper-screen">
+        <header class="topbar paper-topbar">
+          <button class="icon-button" data-screen="settings-screen" aria-label="返回个人资料">‹</button>
+          <div class="section-title"><strong>设置</strong><small>连接、记忆与数据</small></div>
+          <button id="logout-button" class="text-button">退出</button>
+        </header>
+        <div class="scroll-content settings-content">
+          <form id="api-config-form" class="settings-card">
+            <div class="settings-card-head"><span>01</span><div><h2>API 配置</h2><p>密钥会加密保存在服务端，不会显示原文</p></div></div>
+            <h3>聊天 API</h3>
+            <label class="field"><span>Base URL</span><input id="api-chat-url" placeholder="https://api.openai.com/v1"></label>
+            <div class="two-column">
+              <label class="field"><span>模型</span><input id="api-chat-model"></label>
+              <label class="field"><span>API Key</span><input id="api-chat-key" type="password" placeholder="留空则保留原密钥"></label>
+            </div>
+            <h3>识图 API（可选）</h3>
+            <label class="field"><span>Base URL</span><input id="api-vision-url"></label>
+            <div class="two-column">
+              <label class="field"><span>模型</span><input id="api-vision-model"></label>
+              <label class="field"><span>API Key</span><input id="api-vision-key" type="password" placeholder="留空则保留原密钥"></label>
+            </div>
+            <h3>NAI / 生图</h3>
+            <div class="two-column">
+              <label class="field"><span>服务类型</span><select id="api-image-provider"><option value="novelai">NovelAI</option><option value="openai">OpenAI 兼容</option></select></label>
+              <label class="field"><span>模型</span><input id="api-image-model"></label>
+            </div>
+            <label class="field"><span>Base URL</span><input id="api-image-url"></label>
+            <label class="field"><span>API Key</span><input id="api-image-key" type="password" placeholder="留空则保留原密钥"></label>
+            <button class="primary-btn" type="submit">保存 API 配置</button>
+            <button id="enable-notifications" class="secondary-btn full-width" type="button">允许此设备显示消息通知</button>
+            <div id="integration-list" class="integration-list"></div>
           </form>
 
           <section class="settings-card" id="memory-settings">
@@ -238,13 +318,7 @@
           </section>
 
           <section class="settings-card">
-            <div class="settings-card-head"><span>03</span><div><h2>API 与服务</h2><p>密钥只保存在 Render 服务端环境变量</p></div></div>
-            <div id="integration-list" class="integration-list"></div>
-            <p class="security-note">为避免 API Key 泄露，网页只显示连接状态，不会读取或返回密钥。</p>
-          </section>
-
-          <section class="settings-card">
-            <div class="settings-card-head"><span>04</span><div><h2>聊天记录搬家</h2><p>兼容 wq70/OVO 官方导出 JSON</p></div></div>
+            <div class="settings-card-head"><span>03</span><div><h2>聊天记录搬家</h2><p>兼容 wq70/OVO 官方导出 JSON</p></div></div>
             <label class="file-drop">
               <input id="ovo-import-file" type="file" accept=".json,application/json">
               <span>选择或拖入 OVO 聊天记录</span>
@@ -272,9 +346,50 @@
         <button data-plus-action="file"><span>⇧</span>文件</button>
         <button data-plus-action="music"><span>♫</span>音乐</button>
         <button data-screen="reading-screen"><span>▤</span>阅读</button>
-        <button data-plus-action="record"><span>✎</span>记录</button>
         <button data-screen="gallery-screen"><span>✦</span>创作</button>
-        <button data-plus-action="thought"><span>☁</span>内心想法</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="chat-more-sheet" class="sheet hidden" aria-hidden="true">
+    <button class="sheet-scrim" data-close-sheet aria-label="关闭"></button>
+    <section class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <h2>聊天信息</h2>
+      <div class="list-actions">
+        <button id="open-chat-search">搜索聊天记录 <b>›</b></button>
+        <button data-screen="api-settings-screen">记忆系统 <b>›</b></button>
+        <button data-screen="gallery-screen" data-open-gallery="favorites">收藏消息 <b>›</b></button>
+        <button data-screen="gallery-screen" data-open-gallery="images">NAI 生图 <b>›</b></button>
+        <button data-screen="gallery-screen" data-open-gallery="scenes">小剧场 <b>›</b></button>
+        <button data-screen="api-settings-screen">设置 <b>›</b></button>
+      </div>
+    </section>
+  </div>
+
+  <div id="chat-search-sheet" class="sheet hidden" aria-hidden="true">
+    <button class="sheet-scrim" data-close-sheet aria-label="关闭"></button>
+    <section class="sheet-panel tall-sheet">
+      <div class="sheet-handle"></div>
+      <h2>搜索聊天记录</h2>
+      <div class="inline-form"><input id="chat-search-input" placeholder="输入关键词"><button id="chat-search-button" class="compact-btn">搜索</button></div>
+      <div id="chat-search-results" class="search-results"></div>
+    </section>
+  </div>
+
+  <div id="record-type-sheet" class="sheet hidden" aria-hidden="true">
+    <button class="sheet-scrim" data-close-sheet aria-label="关闭"></button>
+    <section class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <h2>记点什么</h2>
+      <div class="action-grid">
+        <button data-new-record-kind="note"><span>✎</span>随记</button>
+        <button data-new-record-kind="task"><span>✓</span>待办</button>
+        <button data-new-record-kind="habit"><span>○</span>习惯</button>
+        <button data-new-record-kind="mood"><span>☁</span>心情</button>
+        <button data-new-record-kind="schedule"><span>◷</span>日程</button>
+        <button data-new-record-kind="period"><span>♡</span>经期</button>
+        <button data-new-record-kind="transaction"><span>¥</span>记账</button>
       </div>
     </section>
   </div>
@@ -288,7 +403,8 @@
         <button data-message-action="quote">引用</button>
         <button data-message-action="favorite">收藏</button>
         <button data-message-action="delete">删除</button>
-        <button data-message-action="forward">生成聊天图片</button>
+        <button data-message-action="forward">转发</button>
+        <button data-message-action="recall">撤回</button>
         <button data-message-action="reroll">重回</button>
       </div>
     </section>
