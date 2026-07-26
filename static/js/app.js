@@ -18,10 +18,15 @@
     rewards: {},
     queue: [],
     attachments: [],
+    draftThought: "",
     reply: null,
     selectedMessage: null,
+    selectedMessageIds: new Set(),
+    selectionAction: "",
     recordKind: "",
+    drawerTab: "type",
     ledgerTab: "ledger",
+    rewardTab: "exchange",
     galleryTab: "favorites",
     books: [],
     currentBook: null,
@@ -95,6 +100,9 @@
   }
 
   async function boot() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/static/js/sw.js").catch(() => {});
+    }
     updateClock();
     window.setInterval(updateClock, 1000);
     bindGlobalEvents();
@@ -129,13 +137,23 @@
   function applyConfig() {
     const config = state.config;
     $("#chat-ai-name").textContent = config.ai_name || "AI";
+    $("#profile-ai-name").textContent = config.ai_name || "AI";
+    $("#profile-ai-remark").textContent = config.profile?.ai_remark || "我们的小家";
     $("#setting-user-name").value = config.user_name || "";
     $("#setting-ai-name").value = config.ai_name || "";
     const profile = config.profile || {};
+    $("#setting-ai-remark").value = profile.ai_remark || "";
     $("#setting-character-prompt").value = profile.character_prompt || "";
+    $("#setting-user-prompt").value = profile.user_prompt || "";
     $("#setting-relationship").value = profile.relationship || "";
-    $("#setting-worldbook").value = profile.worldbook || "";
     $("#setting-proactive").checked = Boolean(profile.proactive_enabled);
+    const stats = config.chat_stats || {};
+    $("#profile-message-count").textContent = stats.messages || 0;
+    $("#profile-token-count").textContent = Number(stats.token_estimate || 0).toLocaleString("zh-CN");
+    $("#profile-recent-chat").textContent = stats.recent_at ? localDate(stats.recent_at) : "—";
+    $("#record-title").textContent = profile.record_title || "YUK";
+    $("#blackroom-title strong").textContent = `${config.ai_name || "AI"}的小黑屋`;
+    renderWorldbooks();
     updateClock();
   }
 
@@ -144,7 +162,7 @@
     $("#clock").textContent = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     const start = new Date(`${state.config.start_date || "2024-09-01"}T00:00:00`);
     const days = Math.max(0, Math.floor((now - start) / 86400000));
-    $("#days-label").textContent = `Since ${formatStartDate(start)} · 我们已经一起走过了 ${days} 天`;
+    $("#days-label").textContent = `我们一起走过了 ${days} 天`;
   }
 
   function formatStartDate(date) {
@@ -190,6 +208,7 @@
     if (id === "gallery-screen") renderGallery();
     if (id === "blackroom-screen") renderBlackroom();
     if (id === "reading-screen") loadBooks();
+    if (id === "api-settings-screen") loadApiConfig();
   }
 
   function openDrawer() {
@@ -224,12 +243,14 @@
     renderRewards();
     renderGallery();
     renderBlackroom();
+    renderWorldbooks();
+    renderRecordDrawer();
   }
 
   function renderMessages() {
     const list = $("#message-list");
     list.textContent = "";
-    if (!state.messages.length) {
+    if (!state.messages.length && !state.queue.length) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
       empty.innerHTML = "<span>⌂</span><h2>家已经准备好了</h2><p>第一句话，会成为新家里最早的一页。</p>";
@@ -245,6 +266,16 @@
       const bubble = document.createElement("div");
       bubble.className = "bubble";
       const metadata = message.metadata || {};
+      if (state.selectionAction && role !== "system") {
+        const check = document.createElement("button");
+        check.className = `selection-check ${state.selectedMessageIds.has(message.id) ? "active" : ""}`;
+        check.textContent = state.selectedMessageIds.has(message.id) ? "✓" : "";
+        check.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleMessageSelection(message.id);
+        });
+        row.append(check);
+      }
       if (metadata.quote) {
         const quote = document.createElement("div");
         quote.className = "quote";
@@ -254,6 +285,17 @@
       const content = document.createElement("div");
       content.textContent = message.content;
       bubble.append(content);
+      if (metadata.inner_thought) {
+        const thought = document.createElement("button");
+        thought.className = "thought-mark";
+        thought.textContent = "!";
+        thought.title = "查看内心想法";
+        thought.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toast(`内心想法：${metadata.inner_thought}`);
+        });
+        bubble.append(thought);
+      }
       if (role !== "system") {
         const meta = document.createElement("div");
         meta.className = "bubble-meta";
@@ -269,11 +311,37 @@
         meta.append(time);
         bubble.append(meta);
         bindLongPress(row, () => {
+          if (state.selectionAction) return toggleMessageSelection(message.id);
           state.selectedMessage = message;
           updateMessageMenu(message);
           openSheet("#message-menu");
         });
       }
+      row.append(bubble);
+      list.append(row);
+    });
+    state.queue.forEach((queued, index) => {
+      const row = document.createElement("div");
+      row.className = "message-row user pending";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = queued.content;
+      if (queued.inner_thought) {
+        const thought = document.createElement("button");
+        thought.className = "thought-mark";
+        thought.textContent = "!";
+        thought.addEventListener("click", () => toast(`内心想法：${queued.inner_thought}`));
+        bubble.append(thought);
+      }
+      const remove = document.createElement("button");
+      remove.className = "pending-remove";
+      remove.textContent = "×";
+      remove.title = "取消发送";
+      remove.addEventListener("click", () => {
+        state.queue.splice(index, 1);
+        renderMessages();
+      });
+      bubble.append(remove);
       row.append(bubble);
       list.append(row);
     });
@@ -304,6 +372,8 @@
   function updateMessageMenu(message) {
     const reroll = $('[data-message-action="reroll"]');
     reroll.style.display = message.role === "assistant" ? "" : "none";
+    const recall = $('[data-message-action="recall"]');
+    recall.style.display = message.role === "user" ? "" : "none";
   }
 
   function scrollMessages() {
@@ -316,18 +386,9 @@
   function renderQueue() {
     const queue = $("#queued-list");
     queue.textContent = "";
-    state.queue.forEach((text, index) => {
-      const chip = document.createElement("span");
-      chip.className = "queued-chip";
-      chip.innerHTML = `<span>${escapeHtml(text)}</span><button aria-label="移除">×</button>`;
-      $("button", chip).addEventListener("click", () => {
-        state.queue.splice(index, 1);
-        renderQueue();
-      });
-      queue.append(chip);
-    });
-    queue.classList.toggle("hidden", state.queue.length === 0);
+    queue.classList.add("hidden");
     renderAttachments();
+    renderMessages();
   }
 
   function renderAttachments() {
@@ -351,32 +412,37 @@
     const text = input.value.trim();
     if (!text) return toast("先写一句话");
     if (state.queue.length >= 9) return toast("一次最多连续发送 10 条", "error");
-    state.queue.push(text);
+    state.queue.push({ content: text, inner_thought: state.draftThought });
+    state.draftThought = "";
+    $("#message-input").classList.remove("has-thought");
     input.value = "";
     resizeComposer();
     renderQueue();
+    scrollMessages();
   }
 
-  async function sendMessages(innerThought = "") {
+  async function sendMessages() {
     const input = $("#message-input");
     const current = input.value.trim();
-    const messages = [...state.queue, ...(current ? [current] : [])];
+    const messages = [...state.queue, ...(current ? [{ content: current, inner_thought: state.draftThought }] : [])];
     if (!messages.length && !state.attachments.length) return;
-    if (!messages.length) messages.push("看看我发来的附件。");
+    if (!messages.length) messages.push({ content: "看看我发来的附件。", inner_thought: "" });
     const button = $("#send-button");
     setBusy(button, true, "…");
-    const optimistic = messages.map((content, index) => ({
+    const optimistic = messages.map((entry, index) => ({
       id: `pending-${Date.now()}-${index}`,
       role: "user",
-      content,
+      content: entry.content,
       metadata: {
         quote: index === 0 ? state.reply?.content : "",
-        inner_thought: index === messages.length - 1 ? innerThought : "",
+        inner_thought: entry.inner_thought || "",
       },
       created_at: new Date().toISOString(),
     }));
     state.messages.push(...optimistic);
     state.queue = [];
+    state.draftThought = "";
+    input.classList.remove("has-thought");
     input.value = "";
     renderQueue();
     renderMessages();
@@ -386,7 +452,6 @@
         method: "POST",
         body: JSON.stringify({
           messages,
-          inner_thought: innerThought,
           quote: state.reply?.content || "",
           attachment_ids: state.attachments.map((item) => item.id),
           reading_context: state.currentReadingText || "",
@@ -428,7 +493,20 @@
     if (!message) return;
     closeSheets();
     if (action === "quote") return setReply(message);
-    if (action === "forward") return shareMessage(message);
+    if (["forward", "favorite", "delete"].includes(action)) {
+      startMessageSelection(action, message.id);
+      return;
+    }
+    if (action === "recall") {
+      try {
+        const updated = await api(`/api/messages/${message.id}/recall`, {
+          method: "POST", body: "{}",
+        });
+        replaceMessage(updated);
+        toast("你撤回了一条消息，AI 只会知道发生过撤回");
+      } catch (error) { toast(error.message, "error"); }
+      return;
+    }
     if (action === "edit") {
       return openDialog({
         kicker: "EDIT",
@@ -444,38 +522,64 @@
         },
       });
     }
-    if (action === "favorite") {
-      try {
-        const updated = await api(`/api/messages/${message.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ favorite_by: "user" }),
-        });
-        replaceMessage(updated);
-        renderGallery();
-        toast("收藏状态已更新");
-      } catch (error) { toast(error.message, "error"); }
-      return;
-    }
-    if (action === "delete") {
-      return openDialog({
-        kicker: "GRAVEYARD",
-        title: "把这句话放进坟场？",
-        fields: [{ name: "reason", label: "删除原因（可选）", type: "textarea", value: "" }],
-        danger: true,
-        submit: async (values) => {
-          const removed = await api(`/api/messages/${message.id}`, {
-            method: "DELETE",
-            body: JSON.stringify({ reason: values.reason }),
-          });
-          state.messages = state.messages.filter((item) => item.id !== message.id);
-          state.graves.unshift(removed);
-          renderMessages();
-          renderBlackroom();
-          toast("已放进坟场");
-        },
-      });
-    }
     if (action === "reroll") return reroll(message);
+  }
+
+  function startMessageSelection(action, firstId) {
+    state.selectionAction = action;
+    state.selectedMessageIds = new Set([firstId]);
+    $("#selection-bar").classList.remove("hidden");
+    updateSelectionCount();
+    renderMessages();
+  }
+
+  function toggleMessageSelection(id) {
+    if (state.selectedMessageIds.has(id)) state.selectedMessageIds.delete(id);
+    else state.selectedMessageIds.add(id);
+    updateSelectionCount();
+    renderMessages();
+  }
+
+  function updateSelectionCount() {
+    $("#selection-count").textContent = `已选择 ${state.selectedMessageIds.size} 条`;
+  }
+
+  function cancelMessageSelection() {
+    state.selectionAction = "";
+    state.selectedMessageIds.clear();
+    $("#selection-bar").classList.add("hidden");
+    renderMessages();
+  }
+
+  async function confirmMessageSelection() {
+    const selected = state.messages.filter((message) => state.selectedMessageIds.has(message.id));
+    if (!selected.length) return toast("请先选择消息");
+    try {
+      if (state.selectionAction === "forward") {
+        shareMessages(selected);
+      } else if (state.selectionAction === "favorite") {
+        for (const message of selected) {
+          const updated = await api(`/api/messages/${message.id}`, {
+            method: "PATCH", body: JSON.stringify({ favorite_by: "user" }),
+          });
+          const index = state.messages.findIndex((item) => item.id === updated.id);
+          if (index >= 0) state.messages[index] = updated;
+        }
+        toast("所选消息已收藏");
+      } else if (state.selectionAction === "delete") {
+        for (const message of selected) {
+          const removed = await api(`/api/messages/${message.id}`, {
+            method: "DELETE", body: JSON.stringify({ reason: "批量删除" }),
+          });
+          state.graves.unshift(removed);
+        }
+        state.messages = state.messages.filter((message) => !state.selectedMessageIds.has(message.id));
+        toast("所选消息已放进坟场");
+      }
+      cancelMessageSelection();
+      renderGallery();
+      renderBlackroom();
+    } catch (error) { toast(error.message, "error"); }
   }
 
   function replaceMessage(updated) {
@@ -502,7 +606,13 @@
     } catch (error) { toast(error.message, "error"); }
   }
 
-  function shareMessage(message) {
+  function shareMessages(messages) {
+    const message = {
+      role: messages[0]?.role || "user",
+      content: messages.map((item) =>
+        `${item.role === "assistant" ? state.config.ai_name : state.config.user_name}：${item.content}`).join("\n\n"),
+      created_at: messages[0]?.created_at,
+    };
     const canvas = $("#share-canvas");
     const ctx = canvas.getContext("2d");
     const width = 900;
@@ -530,7 +640,11 @@
     link.download = `聊天记录-${Date.now()}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
-    toast("聊天图片已生成");
+    toast("转发图片已生成");
+  }
+
+  function shareMessage(message) {
+    shareMessages([message]);
   }
 
   function wrapCanvasText(ctx, text, fontSize, maxWidth) {
@@ -570,7 +684,7 @@
   function renderTimeline() {
     const list = $("#timeline-list");
     const items = activeItems().filter((item) =>
-      ["note", "task", "habit", "mood", "attachment", "link"].includes(item.kind) &&
+      ["note", "task", "habit", "mood", "attachment", "link", "schedule", "period", "transaction"].includes(item.kind) &&
       (!state.recordKind || item.kind === state.recordKind));
     list.textContent = "";
     if (!items.length) {
@@ -602,6 +716,7 @@
     return {
       note: "便签", task: "清单", habit: "习惯", mood: "心情",
       attachment: "附件", link: "链接", music: "音乐", transaction: "记账",
+      schedule: "日程", period: "经期",
       account: "资产", saving_plan: "存钱计划", shopping: "购物清单",
       reward_offer: "兑换项目", scene: "小剧场", image: "生图",
     }[kind] || kind;
@@ -641,17 +756,21 @@
           name: "kind", label: "类型", type: "select", value: kind,
           options: [
             ["note", "便签"], ["task", "清单"], ["habit", "习惯打卡"],
-            ["mood", "心情"], ["link", "链接"],
+            ["mood", "心情"], ["schedule", "日程"], ["period", "经期"], ["link", "链接"],
           ],
         },
         { name: "title", label: "标题", type: "text", required: true },
         { name: "content", label: "内容", type: "textarea" },
+        { name: "happened_at", label: "发生 / 提醒时间（可选）", type: "datetime-local" },
+        { name: "tags", label: "标签（逗号分隔）", type: "text" },
         { name: "value", label: "积分（清单/习惯留空时由 AI 建议）", type: "number" },
       ],
       submit: async (values) => {
         const created = await createItem({
-          ...values,
+          kind: values.kind, title: values.title, content: values.content,
+          happened_at: values.happened_at || null,
           value: values.value ? Number(values.value) : 0,
+          metadata: { tags: values.tags },
         });
         state.items.unshift(created);
         renderTimeline();
@@ -798,8 +917,14 @@
     const offers = activeItems("reward_offer");
     $("#reward-shop").innerHTML = offers.map((item) => `<article class="shop-card">
       <div class="shop-icon">✦</div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.content || "今晚可以兑换")}</p>
-      <footer><b>${numeric(item.value)} 分</b><button data-redeem-id="${item.id}">兑换</button></footer>
+      <footer><b>${numeric(item.value)} ${(item.metadata?.currency || "points") === "fund" ? "基金" : "积分"}</b><button data-redeem-id="${item.id}">兑换</button></footer>
     </article>`).join("") || `<article class="shop-card"><div class="shop-icon">☕</div><h3>一起放松一会儿</h3><p>可以先添加你们自己的娱乐项目。</p><footer><b>示例</b></footer></article>`;
+    const ledger = activeItems().filter((item) =>
+      ["reward", "reward_spend", "shopping_fund", "reward_redemption"].includes(item.kind));
+    $("#reward-ledger").innerHTML = ledger.map((item) =>
+      `<div class="ledger-row"><div class="ledger-info"><b>${escapeHtml(item.title)}</b><small>${escapeHtml(localDate(item.created_at))}</small></div><strong>${numeric(item.value)}</strong></div>`
+    ).join("") || emptyInline("还没有积分记录");
+    renderRewardTab();
   }
 
   async function evaluateRewards(showToast = true) {
@@ -817,7 +942,10 @@
     try {
       const result = await api("/api/rewards/redeem", {
         method: "POST",
-        body: JSON.stringify({ title: offer.title, content: offer.content, points: offer.value }),
+        body: JSON.stringify({
+          title: offer.title, content: offer.content, points: offer.value,
+          currency: offer.metadata?.currency || "points",
+        }),
       });
       state.items.unshift(result.item);
       state.rewards = result.summary;
@@ -833,10 +961,14 @@
       fields: [
         { name: "title", label: "项目", type: "text", required: true },
         { name: "value", label: "需要积分", type: "number", required: true },
+        { name: "currency", label: "使用余额", type: "select", value: "points", options: [["points", "积分（娱乐）"], ["fund", "购物基金（犹豫购买）"]] },
         { name: "content", label: "说明", type: "textarea" },
       ],
       submit: async (values) => {
-        const created = await createItem({ kind: "reward_offer", ...values, value: Number(values.value) });
+        const created = await createItem({
+          kind: "reward_offer", title: values.title, content: values.content,
+          value: Number(values.value), metadata: { currency: values.currency },
+        });
         state.items.unshift(created);
         renderRewards();
       },
@@ -851,6 +983,30 @@
       renderRewards();
       toast("剩余积分已经转进购物基金");
     } catch (error) { toast(error.message, "error"); }
+  }
+
+  function renderRewardTab() {
+    const tab = state.rewardTab || "exchange";
+    $("#reward-exchange-panel").classList.toggle("hidden", tab !== "exchange");
+    $("#reward-ledger-panel").classList.toggle("hidden", tab !== "ledger");
+    $("#reward-draw-panel").classList.toggle("hidden", tab !== "draw");
+    $$("[data-reward-tab]", $("#reward-tabs")).forEach((button) =>
+      button.classList.toggle("active", button.dataset.rewardTab === tab));
+  }
+
+  async function drawReward(currency) {
+    const button = currency === "fund" ? $("#draw-fund-button") : $("#draw-points-button");
+    setBusy(button, true, "抽取中…");
+    try {
+      const result = await api("/api/rewards/draw", {
+        method: "POST", body: JSON.stringify({ currency }),
+      });
+      state.items.unshift(result.item, result.spend);
+      state.rewards = result.summary;
+      $("#draw-result").innerHTML = `<article class="shop-card"><div class="shop-icon">✦</div><h3>${escapeHtml(result.item.title)}</h3><p>${escapeHtml(result.item.content || "今天的幸运奖励")}</p></article>`;
+      renderRewards();
+    } catch (error) { toast(error.message, "error"); }
+    finally { setBusy(button, false); }
   }
 
   function renderGallery() {
@@ -922,11 +1078,6 @@
   }
 
   function renderBlackroom() {
-    const aiFavorites = [
-      ...state.messages.filter((message) => (message.metadata?.favorite_by || []).includes("ai")),
-      ...activeItems("ai_favorite"),
-    ];
-    fillBlackroom("#ai-favorites", aiFavorites, (item) => item.content);
     fillBlackroom("#ai-memos", activeItems("ai_memo"), (item) => item.content || item.title);
     fillBlackroom("#ai-wallet", activeItems("ai_wallet"), (item) => `${item.title || "记录"} ${numeric(item.value) ? `· ${numeric(item.value)}` : ""}`);
     fillBlackroom("#graveyard", state.graves, (item) => `${item.content}${item.deletion_reason ? `\n删除原因：${item.deletion_reason}` : ""}`);
@@ -934,6 +1085,7 @@
 
   function fillBlackroom(selector, items, text) {
     const target = $(selector);
+    if (!target) return;
     target.textContent = "";
     if (!items.length) {
       target.innerHTML = "<div class='blackroom-entry'>这里暂时很安静。</div>";
@@ -966,7 +1118,10 @@
       ["supabase", "Supabase", status.supabase?.enabled, status.supabase?.backend || "SQLite"],
       ["memory", "Ombre Brain 记忆", status.memory?.ok, status.memory?.message || "未配置"],
       ["reading", "共读 MCP", status.reading?.ok, status.reading?.message || "未配置"],
+      ["vision", "识图 API", status.vision?.enabled, status.vision?.model || "未配置"],
       ["image", "NAI / 生图", status.image?.enabled, status.image?.model || "未配置"],
+      ["search", "联网搜索", status.search?.enabled, status.search?.enabled ? "已连接" : "未配置"],
+      ["push", "消息推送", status.push?.enabled, status.push?.enabled ? "已连接" : "未配置"],
     ];
     $("#integration-list").innerHTML = definitions.map(([, name, ok, detail]) =>
       `<div class="integration-row ${ok ? "ok" : "error"}"><span><b>${escapeHtml(name)}</b><small>${escapeHtml(detail)}</small></span><i></i></div>`).join("");
@@ -1015,9 +1170,10 @@
         body: JSON.stringify({
           user_name: $("#setting-user-name").value.trim(),
           ai_name: $("#setting-ai-name").value.trim(),
+          ai_remark: $("#setting-ai-remark").value.trim(),
           character_prompt: $("#setting-character-prompt").value.trim(),
+          user_prompt: $("#setting-user-prompt").value.trim(),
           relationship: $("#setting-relationship").value.trim(),
-          worldbook: $("#setting-worldbook").value.trim(),
           proactive_enabled: $("#setting-proactive").checked,
         }),
       });
@@ -1026,6 +1182,130 @@
       toast("我们的设定已经保存");
     } catch (error) { toast(error.message, "error"); }
     finally { setBusy(button, false); }
+  }
+
+  function renderWorldbooks() {
+    const target = $("#worldbook-list");
+    if (!target) return;
+    const entries = activeItems("worldbook");
+    target.innerHTML = entries.map((item) => {
+      const meta = item.metadata || {};
+      return `<article class="worldbook-entry">
+        <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.content || "")}</p>
+        <small>${escapeHtml(meta.category || "未分类")} · ${escapeHtml(meta.injection || "middle")} · 权重 ${numeric(meta.weight || 100)}</small></div>
+        <button data-edit-worldbook="${item.id}">编辑</button>
+      </article>`;
+    }).join("") || emptyInline("还没有世界书条目");
+  }
+
+  function editWorldbook(item = null) {
+    const meta = item?.metadata || {};
+    openDialog({
+      kicker: "WORLDBOOK",
+      title: item ? "编辑世界书条目" : "新建世界书条目",
+      fields: [
+        { name: "title", label: "名称", type: "text", value: item?.title || "", required: true },
+        { name: "category", label: "分类", type: "text", value: meta.category || "" },
+        { name: "tags", label: "标签 / 触发词（逗号分隔）", type: "text", value: meta.tags || "" },
+        { name: "content", label: "内容", type: "textarea", value: item?.content || "", required: true },
+        { name: "injection", label: "注入位置", type: "select", value: meta.injection || "middle", options: [["before", "对话前"], ["middle", "对话中"], ["after", "对话后"]] },
+        { name: "global", label: "全局启用", type: "checkbox", value: Boolean(meta.global) },
+        { name: "always_on", label: "始终触发", type: "checkbox", value: Boolean(meta.always_on) },
+        { name: "weight", label: "权重", type: "number", value: meta.weight || 100 },
+      ],
+      submit: async (values) => {
+        const payload = {
+          kind: "worldbook", title: values.title, content: values.content,
+          metadata: {
+            category: values.category, tags: values.tags, injection: values.injection,
+            global: values.global, always_on: values.always_on, weight: Number(values.weight || 100),
+          },
+        };
+        const saved = item
+          ? await api(`/api/items/${item.id}`, { method: "PATCH", body: JSON.stringify(payload) })
+          : await createItem(payload);
+        replaceItem(saved);
+        renderWorldbooks();
+        toast("世界书条目已保存");
+      },
+    });
+  }
+
+  async function loadApiConfig() {
+    try {
+      const config = await api("/api/integrations/config");
+      $("#api-chat-url").value = config.chat?.url || "";
+      $("#api-chat-model").value = config.chat?.model || "";
+      $("#api-chat-key").placeholder = config.chat?.has_key ? "已有密钥，留空则保留" : "请输入 API Key";
+      $("#api-vision-url").value = config.vision?.url || "";
+      $("#api-vision-model").value = config.vision?.model || "";
+      $("#api-vision-key").placeholder = config.vision?.has_key ? "已有密钥，留空则保留" : "可选";
+      $("#api-image-provider").value = config.image?.provider || "novelai";
+      $("#api-image-url").value = config.image?.url || "";
+      $("#api-image-model").value = config.image?.model || "";
+      $("#api-image-key").placeholder = config.image?.has_key ? "已有密钥，留空则保留" : "请输入 API Key";
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  async function saveApiConfig(event) {
+    event.preventDefault();
+    const button = $('button[type="submit"]', event.currentTarget);
+    setBusy(button, true);
+    try {
+      const payload = {
+        chat_url: $("#api-chat-url").value.trim(),
+        chat_model: $("#api-chat-model").value.trim(),
+        chat_key: $("#api-chat-key").value.trim(),
+        vision_url: $("#api-vision-url").value.trim(),
+        vision_model: $("#api-vision-model").value.trim(),
+        vision_key: $("#api-vision-key").value.trim(),
+        image_provider: $("#api-image-provider").value,
+        image_url: $("#api-image-url").value.trim(),
+        image_model: $("#api-image-model").value.trim(),
+        image_key: $("#api-image-key").value.trim(),
+      };
+      await api("/api/integrations/config", { method: "PUT", body: JSON.stringify(payload) });
+      $("#api-chat-key").value = "";
+      $("#api-vision-key").value = "";
+      $("#api-image-key").value = "";
+      await loadApiConfig();
+      await loadIntegrations();
+      toast("API 配置已加密保存");
+    } catch (error) { toast(error.message, "error"); }
+    finally { setBusy(button, false); }
+  }
+
+  async function searchChat() {
+    const query = $("#chat-search-input").value.trim();
+    if (!query) return toast("请输入搜索关键词");
+    try {
+      const results = await api(`/api/messages/search?q=${encodeURIComponent(query)}`);
+      $("#chat-search-results").innerHTML = results.map((message) =>
+        `<article><b>${message.role === "assistant" ? escapeHtml(state.config.ai_name) : escapeHtml(state.config.user_name)}</b><p>${escapeHtml(message.content)}</p><small>${escapeHtml(localDate(message.created_at))}</small></article>`
+      ).join("") || emptyInline("没有找到相关消息");
+    } catch (error) { toast(error.message, "error"); }
+  }
+
+  function renderRecordDrawer() {
+    $("#drawer-record-title").textContent = state.config.profile?.record_title || "YUK";
+    $("#drawer-points-balance").textContent = numeric(state.rewards.balance).toFixed(0);
+    $("#drawer-fund-balance").textContent = numeric(state.rewards.shopping_fund).toFixed(0);
+    const dates = activeItems().slice(0, 15).map((item) => localDate(item.happened_at || item.created_at).slice(0, 5));
+    $("#drawer-calendar").innerHTML = [...new Set(dates)].map((date) => `<button data-record-date="${escapeHtml(date)}"><span>◷</span>${escapeHtml(date)}</button>`).join("") || emptyInline("还没有记录日期");
+    const tags = activeItems().flatMap((item) => String(item.metadata?.tags || "").split(/[,，]/)).map((tag) => tag.trim()).filter(Boolean);
+    $("#drawer-tags").innerHTML = [...new Set(tags)].map((tag) => `<button data-record-tag="${escapeHtml(tag)}"><span>#</span>${escapeHtml(tag)}</button>`).join("") || emptyInline("给记录添加标签后会出现在这里");
+  }
+
+  function editRecordTitle() {
+    openDialog({
+      kicker: "TITLE", title: "修改生活记录标题",
+      fields: [{ name: "title", label: "标题", type: "text", value: state.config.profile?.record_title || "YUK", required: true }],
+      submit: async (values) => {
+        const result = await api("/api/settings", { method: "PUT", body: JSON.stringify({ record_title: values.title }) });
+        state.config = result.config;
+        applyConfig();
+      },
+    });
   }
 
   async function importOvo(mode) {
@@ -1230,9 +1510,13 @@
   function openInnerThought() {
     openDialog({
       kicker: "PRIVATE CONTEXT",
-      title: "告诉他此刻的内心想法",
+      title: "附上一句内心想法",
       fields: [{ name: "thought", label: "这不是思维链，只是你愿意分享的情绪语境", type: "textarea", required: true }],
-      submit: async (values) => sendMessages(values.thought),
+      submit: async (values) => {
+        state.draftThought = values.thought;
+        $("#message-input").classList.add("has-thought");
+        toast("内心想法已附上；按 Enter 放入消息，点发送才会让 AI 回复");
+      },
     });
   }
 
@@ -1274,7 +1558,6 @@
   }
 
   async function pollEvents() {
-    if (!state.config.features?.proactive) return;
     try {
       const result = await api("/api/events");
       if (result.message && !state.messages.some((item) => item.id === result.message.id)) {
@@ -1283,6 +1566,11 @@
         scrollMessages();
         toast(`${state.config.ai_name || "AI"} 发来了一条消息`);
       }
+      (result.reminders || []).forEach((message) => {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(state.config.ai_name || "AI", { body: message.content });
+        }
+      });
     } catch {
       // Polling is intentionally quiet.
     }
@@ -1398,7 +1686,11 @@
     });
     document.addEventListener("click", (event) => {
       const screenButton = event.target.closest("[data-screen]");
-      if (screenButton) showScreen(screenButton.dataset.screen);
+      if (screenButton) {
+        if (screenButton.dataset.rewardTab) state.rewardTab = screenButton.dataset.rewardTab;
+        if (screenButton.dataset.openGallery) state.galleryTab = screenButton.dataset.openGallery;
+        showScreen(screenButton.dataset.screen);
+      }
       if (event.target.closest(".drawer-button")) openDrawer();
       if (event.target.closest("[data-close-sheet]")) closeSheets();
       const plus = event.target.closest("[data-plus-action]");
@@ -1409,17 +1701,36 @@
       if (itemButton) itemAction(itemButton.dataset.itemAction, itemButton.dataset.id);
       const redeem = event.target.closest("[data-redeem-id]");
       if (redeem) redeemOffer(redeem.dataset.redeemId);
+      const worldbook = event.target.closest("[data-edit-worldbook]");
+      if (worldbook) editWorldbook(state.items.find((item) => item.id === worldbook.dataset.editWorldbook));
+      const newRecordButton = event.target.closest("[data-new-record-kind]");
+      if (newRecordButton) {
+        closeSheets();
+        if (newRecordButton.dataset.newRecordKind === "transaction") newTransaction();
+        else newRecord(newRecordButton.dataset.newRecordKind);
+      }
+      const recordKind = event.target.closest("[data-record-kind]");
+      if (recordKind) {
+        state.recordKind = recordKind.dataset.recordKind;
+        closeDrawer();
+        renderTimeline();
+      }
+      const drawerTab = event.target.closest("[data-drawer-tab]");
+      if (drawerTab) {
+        state.drawerTab = drawerTab.dataset.drawerTab;
+        $$("[data-drawer-tab]", $("#drawer-tabs")).forEach((button) => button.classList.toggle("active", button === drawerTab));
+        $$(".drawer-panel", $("#drawer")).forEach((panel) => panel.classList.toggle("active", panel.id === `drawer-${state.drawerTab}`));
+      }
     });
     $("#drawer-scrim").addEventListener("click", closeDrawer);
     $("#plus-button").addEventListener("click", () => openSheet("#plus-sheet"));
     $("#send-button").addEventListener("click", () => sendMessages());
     bindLongPress($("#send-button"), openInnerThought, 650);
-    $("#queue-button").addEventListener("click", queueCurrentMessage);
     $("#message-input").addEventListener("input", resizeComposer);
     $("#message-input").addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
-        sendMessages();
+        queueCurrentMessage();
       }
     });
     $("#clear-reply").addEventListener("click", clearReply);
@@ -1437,14 +1748,15 @@
       }
       showScreen("settings-screen");
     });
-    $("#new-record-button").addEventListener("click", () => newRecord());
-    $("#record-filters").addEventListener("click", (event) => {
-      const chip = event.target.closest("[data-kind]");
-      if (!chip) return;
-      state.recordKind = chip.dataset.kind;
-      $$(".filter-chip", $("#record-filters")).forEach((item) => item.classList.toggle("active", item === chip));
-      renderTimeline();
+    $("#chat-more-button").addEventListener("click", () => openSheet("#chat-more-sheet"));
+    $("#new-record-button").addEventListener("click", () => openSheet("#record-type-sheet"));
+    $("#record-title-button").addEventListener("click", editRecordTitle);
+    $("#blackroom-title").addEventListener("click", () => {
+      showScreen("settings-screen");
+      $("#setting-ai-name").focus();
     });
+    $("#selection-cancel").addEventListener("click", cancelMessageSelection);
+    $("#selection-confirm").addEventListener("click", confirmMessageSelection);
     $("#new-transaction-button").addEventListener("click", newTransaction);
     $("#ledger-tabs").addEventListener("click", (event) => {
       const tab = event.target.closest("[data-ledger-tab]");
@@ -1454,7 +1766,14 @@
     });
     $("#evaluate-rewards").addEventListener("click", () => evaluateRewards(true));
     $("#new-reward-button").addEventListener("click", newRewardOffer);
-    $("#settle-rewards").addEventListener("click", settleRewards);
+    $("#reward-tabs").addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-reward-tab]");
+      if (!tab) return;
+      state.rewardTab = tab.dataset.rewardTab;
+      renderRewardTab();
+    });
+    $("#draw-points-button").addEventListener("click", () => drawReward("points"));
+    $("#draw-fund-button").addEventListener("click", () => drawReward("fund"));
     $("#gallery-tabs").addEventListener("click", (event) => {
       const tab = event.target.closest("[data-gallery-tab]");
       if (!tab) return;
@@ -1463,6 +1782,18 @@
     });
     $("#new-scene-button").addEventListener("click", newScene);
     $("#profile-form").addEventListener("submit", saveProfile);
+    $("#api-config-form").addEventListener("submit", saveApiConfig);
+    $("#enable-notifications").addEventListener("click", async () => {
+      if (!("Notification" in window)) return toast("这个浏览器不支持系统通知");
+      const permission = await Notification.requestPermission();
+      toast(permission === "granted" ? "此设备已允许消息通知" : "通知未开启");
+    });
+    $("#new-worldbook-button").addEventListener("click", () => editWorldbook());
+    $("#open-chat-search").addEventListener("click", () => openSheet("#chat-search-sheet"));
+    $("#chat-search-button").addEventListener("click", searchChat);
+    $("#chat-search-input").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") searchChat();
+    });
     $("#memory-search-button").addEventListener("click", searchMemory);
     $("#memory-save-button").addEventListener("click", saveMemory);
     $("#ovo-import-file").addEventListener("change", (event) => {
