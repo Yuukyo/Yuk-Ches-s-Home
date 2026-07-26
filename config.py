@@ -31,6 +31,8 @@ def env_float(name: str, default: float) -> float:
 class Config:
     app_secret: str = os.getenv("APP_SECRET", "dev-only-change-me")
     app_password: str = os.getenv("APP_PASSWORD", "")
+    session_cookie_secure: bool = env_bool("SESSION_COOKIE_SECURE", False)
+    remember_days: int = env_int("REMEMBER_DAYS", 180)
     timezone_name: str = os.getenv("APP_TIMEZONE", "Asia/Shanghai")
     start_date: str = os.getenv("START_DATE", "2024-09-01")
     user_name: str = os.getenv("USER_NAME", "断云去")
@@ -43,6 +45,10 @@ class Config:
         "SYSTEM_PROMPT",
         "你是余天骋，正在与断云去自然地生活和聊天。",
     )
+
+    vision_url: str = os.getenv("VISION_API_URL", "").rstrip("/")
+    vision_key: str = os.getenv("VISION_API_KEY", "")
+    vision_model: str = os.getenv("VISION_MODEL", "")
 
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     supabase_key: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -71,6 +77,10 @@ class Config:
     proactive_enabled: bool = env_bool("PROACTIVE_ENABLED", False)
     proactive_idle_minutes: int = env_int("PROACTIVE_MIN_IDLE_MINUTES", 180)
     cron_secret: str = os.getenv("CRON_SECRET", "")
+    search_url: str = os.getenv("WEB_SEARCH_API_URL", "").rstrip("/")
+    search_key: str = os.getenv("WEB_SEARCH_API_KEY", "")
+    push_url: str = os.getenv("PUSH_WEBHOOK_URL", "").strip()
+    push_token: str = os.getenv("PUSH_WEBHOOK_TOKEN", "").strip()
 
     @property
     def timezone(self) -> ZoneInfo:
