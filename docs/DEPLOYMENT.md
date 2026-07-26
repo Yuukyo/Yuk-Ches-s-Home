@@ -53,9 +53,21 @@ API_MODEL=...
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 CRON_SECRET=另一串随机长密钥
+SESSION_COOKIE_SECURE=true
 ```
 
 再按 `MCP_SETUP.md` 接 Ombre Brain 与共读。主动消息默认关闭，全部验证后再把 `PROACTIVE_ENABLED` 改为 `true`，或在设置页开启。
+
+聊天、识图和生图 API 也能在网页设置页加密保存。Render 上的 `APP_SECRET` 必须固定且不要随意重新生成；更换后，网页里以前保存的 API Key 将无法解密，需要重新填写。
+
+若要把主动消息 / AI 提醒送到手机或其他设备，可在 Render 增加：
+
+```dotenv
+PUSH_WEBHOOK_URL=https://你的推送服务地址
+PUSH_WEBHOOK_TOKEN=可选的Bearer令牌
+```
+
+联网搜索可用 Tavily（`SEARCH_API_URL=https://api.tavily.com/search`）或接受 JSON POST 的兼容搜索接口，并配置 `SEARCH_API_KEY`。
 
 ## 四、定时任务
 
@@ -63,7 +75,8 @@ CRON_SECRET=另一串随机长密钥
 
 - 每天北京时间 00:00–06:00 每小时检查一次，并在随机目标小时生成 AI 每日一句；
 - 08:00、12:00、18:00、22:00 评估奖励；
-- 22:00 结转购物基金；
+- 次日凌晨把前一天剩余积分 1:1 结转到购物基金；
+- 发送到期的 AI 日程提醒；
 - 检查是否应该发送主动消息。
 
 在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
@@ -110,4 +123,3 @@ GitHub Actions 的计划时间可能有几分钟延迟；奖励逻辑按应用�
 - 在 Supabase 启用合适的数据库备份策略。
 - 从 Ombre Dashboard 导出记忆备份，或配置其 GitHub 同步。
 - 备份 co-reading 的整个 `READING_MCP_DATA_DIR`。
-
