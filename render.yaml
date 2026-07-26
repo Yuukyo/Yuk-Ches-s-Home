@@ -1,0 +1,59 @@
+services:
+  - type: web
+    name: yuk-ches-home
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 180
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: APP_TIMEZONE
+        value: Asia/Shanghai
+      - key: START_DATE
+        value: 2024-09-01
+      - key: USER_NAME
+        sync: false
+      - key: AI_NAME
+        sync: false
+      - key: APP_SECRET
+        generateValue: true
+      - key: APP_PASSWORD
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: API_MODEL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: home-attachments
+      - key: OMBRE_BRAIN_ENABLED
+        value: "false"
+      - key: OMBRE_BRAIN_MCP_URL
+        sync: false
+      - key: OMBRE_BRAIN_ACCESS_TOKEN
+        sync: false
+      - key: CO_READING_URL
+        sync: false
+      - key: CO_READING_MCP_URL
+        sync: false
+      - key: CO_READING_ACCESS_TOKEN
+        sync: false
+      - key: IMAGE_PROVIDER
+        sync: false
+      - key: IMAGE_API_URL
+        sync: false
+      - key: IMAGE_API_KEY
+        sync: false
+      - key: IMAGE_MODEL
+        sync: false
+      - key: PROACTIVE_ENABLED
+        value: "false"
+      - key: CRON_SECRET
+        sync: false
