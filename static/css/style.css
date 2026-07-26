@@ -1167,3 +1167,207 @@ button { cursor: pointer; }
     transition-duration: .01ms !important;
   }
 }
+
+/* 2026 WeChat-like light refresh */
+:root {
+  --forest-950: #1f1f1f;
+  --forest-900: #2b2b2b;
+  --forest-800: #3c3c3c;
+  --forest-700: #576b95;
+  --forest-500: #7d7d7d;
+  --leaf-300: #95ec69;
+  --sage-100: #e8f7df;
+  --paper: #f5f5f5;
+  --paper-2: #ededed;
+  --paper-3: #dedede;
+  --ink: #191919;
+  --muted: #888;
+  --gold: #07c160;
+  --shadow: 0 16px 55px rgba(0,0,0,.12);
+}
+
+body { background: #e8e8e8; }
+.phone-shell, .screen, .paper-screen, .dark-screen, .forest-screen {
+  background: #f5f5f5;
+  color: #191919;
+}
+.topbar, .paper-topbar, .dark-topbar, .transparent-topbar {
+  background: rgba(237,237,237,.96);
+  border-bottom: 1px solid #dedede;
+  color: #191919;
+}
+.topbar .icon-button, .topbar .text-button, .section-title, .chat-title { color: #191919; }
+.section-title { text-align: center; }
+.topbar-spacer { width: 38px; }
+
+.splash {
+  background: linear-gradient(180deg, #f7faf7 0%, #eaf4e8 100%);
+  color: #1f1f1f;
+}
+.splash .canopy { display: none; }
+.splash-copy { text-align: center; }
+.days-label { font-size: 22px; font-weight: 650; letter-spacing: .02em; }
+.splash blockquote { color: #8b8b8b; font-size: 11px; margin-top: 14px; }
+.enter-home {
+  align-items: center;
+  color: #07c160;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  justify-content: center;
+  margin: 0 auto;
+}
+.pixel-heart {
+  color: #07c160;
+  filter: drop-shadow(2px 0 0 #07c160) drop-shadow(-2px 0 0 #07c160);
+  font-family: monospace;
+  font-size: 24px;
+}
+
+.message-list { background: #ededed; }
+.message-row .bubble {
+  background: #fff;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: none;
+  color: #191919;
+}
+.message-row.user .bubble { background: #95ec69; }
+.message-row.pending .bubble { opacity: .68; outline: 1px dashed #07c160; }
+.pending-remove {
+  background: rgba(0,0,0,.12);
+  border: 0;
+  border-radius: 50%;
+  height: 18px;
+  margin-left: 8px;
+  width: 18px;
+}
+.thought-mark {
+  background: #ff9f0a;
+  border: 0;
+  border-radius: 50%;
+  color: white;
+  float: right;
+  font-size: 10px;
+  font-weight: 800;
+  height: 17px;
+  margin: 3px 0 0 7px;
+  width: 17px;
+}
+.composer { background: #f7f7f7; border-top-color: #d9d9d9; }
+.composer textarea {
+  background: #fff;
+  border-color: #ddd;
+  border-radius: 6px;
+}
+.composer textarea.has-thought { box-shadow: inset 3px 0 #ff9f0a; }
+.send-button, .primary-btn { background: #07c160; border-color: #07c160; color: #fff; }
+.selection-bar {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 14px;
+}
+.selection-bar button { background: transparent; border: 0; color: #576b95; }
+.selection-check {
+  align-self: center;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 50%;
+  flex: 0 0 22px;
+  height: 22px;
+  margin: 0 9px;
+  width: 22px;
+}
+.selection-check.active { background: #07c160; border-color: #07c160; color: #fff; }
+
+.dark-screen .timeline-list, .forest-screen .scroll-content { background: #f5f5f5; }
+.timeline-card, .summary-card, .gallery-card, .shop-card, .generator-form,
+.settings-card, .blackroom-card {
+  background: #fff;
+  border: 0;
+  box-shadow: none;
+  color: #191919;
+}
+.timeline-time, .timeline-card p, .timeline-card footer, .reward-hero p,
+.reward-hero span { color: #888; }
+.record-head-actions { align-items: center; display: flex; gap: 4px; }
+.editable-title { background: transparent; border: 0; }
+.pixel-heart-button { color: #07c160 !important; }
+.reward-hero { background: #fff; color: #191919; }
+.reward-hero strong { color: #07c160; }
+.tabbar, .light-tabs { background: #fff; color: #555; }
+.tab.active { border-bottom-color: #07c160; color: #07c160; }
+
+.drawer { background: #fff; color: #191919; }
+.drawer-brand, .drawer-foot { border-color: #ededed; }
+.drawer-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid #ededed;
+}
+.drawer-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 2px;
+}
+.drawer-tabs button.active { border-bottom-color: #07c160; color: #07c160; }
+.drawer-panel { display: none; padding: 10px; }
+.drawer-panel.active { display: grid; gap: 3px; }
+.drawer-panel > button, .profile-links button, .list-actions button {
+  align-items: center;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #ededed;
+  display: flex;
+  justify-content: space-between;
+  padding: 13px 9px;
+  text-align: left;
+}
+.drawer-panel > button span { color: #07c160; margin-right: 9px; }
+.drawer-balance, .profile-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.drawer-balance > div, .profile-summary > div { text-align: center; }
+.drawer-balance b, .profile-summary strong { display: block; font-size: 20px; }
+.profile-summary { grid-template-columns: repeat(3, 1fr); }
+.profile-summary small { color: #888; display: block; margin-top: 4px; }
+
+.worldbook-entry {
+  align-items: center;
+  border-bottom: 1px solid #ededed;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 11px 0;
+}
+.worldbook-entry h3, .worldbook-entry p { margin: 0 0 4px; }
+.worldbook-entry p {
+  color: #777;
+  display: -webkit-box;
+  font-size: 11px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.worldbook-entry button { background: #f2f2f2; border: 0; border-radius: 5px; padding: 7px 10px; }
+.settings-card h3 { font-size: 13px; margin: 20px 0 8px; }
+.profile-links { padding: 0; }
+
+.sheet-panel { background: #f7f7f7; color: #191919; }
+.list-actions { background: #fff; border-radius: 8px; overflow: hidden; }
+.tall-sheet { max-height: 72dvh; }
+.search-results { max-height: 48dvh; overflow-y: auto; }
+.search-results article { background: #fff; border-bottom: 1px solid #eee; padding: 12px; }
+.search-results p { margin: 5px 0; }
+.draw-card { background: #fff; border-radius: 10px; padding: 22px; text-align: center; }
+
+@media (min-width: 850px) {
+  .phone-shell { border-color: #ccc; }
+}
