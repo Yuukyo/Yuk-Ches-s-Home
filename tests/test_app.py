@@ -59,6 +59,39 @@ class AppTests(unittest.TestCase):
         ).get_json()
         self.assertTrue(changed["metadata"]["done"])
 
+    def test_recall_hides_original_from_ai_history(self) -> None:
+        message = home_app.store.create_message("user", "这句不想让他看见")
+        response = self.client.post(f"/api/messages/{message['id']}/recall")
+        self.assertEqual(response.status_code, 200)
+        recalled = response.get_json()
+        self.assertEqual(recalled["content"], "你撤回了一条消息")
+        self.assertTrue(recalled["metadata"]["recalled"])
+        history = home_app.ai_history()
+        self.assertNotIn("这句不想让他看见", history[-1]["content"])
+        self.assertIn("不知道原文", history[-1]["content"])
+
+    def test_worldbook_fields_round_trip(self) -> None:
+        response = self.client.post(
+            "/api/items",
+            json={
+                "kind": "worldbook",
+                "title": "我们的称呼",
+                "content": "只在家里使用的称呼。",
+                "metadata": {
+                    "category": "关系",
+                    "tags": "家,称呼",
+                    "injection": "before",
+                    "global": True,
+                    "always_on": False,
+                    "weight": 120,
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        item = response.get_json()
+        self.assertEqual(item["metadata"]["injection"], "before")
+        self.assertIn("我们的称呼", home_app.worldbook_context("随便聊聊", "before"))
+
     def test_ovo_import_is_ordered_and_deduplicated(self) -> None:
         payload = {
             "type": "uwu-chat-history",
