@@ -1,0 +1,10 @@
+{
+  "name": "Yuk & Ches's Home",
+  "short_name": "YUK HOME",
+  "description": "我和 AI 的共同生活空间",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#07c160",
+  "lang": "zh-CN"
+}
